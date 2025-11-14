@@ -56,14 +56,14 @@ snakemake -j 4
 
 The repository uses a small set of YAML configuration files (located in `code/`) to control messaging text, file paths, and model settings. The two primary files are:
 
-- `code/shared_config.yaml` - active configuration read by several scripts (`chatbot.py`, `get_convos.py`, `get_toxic_moderated_comments.py`). Key entries:
-	- `openai_models` - list of OpenAI model names the chatbot can use.
-	- `max_interactions` and `max_tokens` - limits used when building prompts and calling OpenAI.
-	- `conversations_file`, `to_contact_file`, `participants_file`, `subreddits_file`, `bad_accounts_file` - relative paths to project CSVs. 
-	- `initial_message`, `clarifying_message`, `handoff_message`, `first_consented_message`, `prompt_dict` - message templates and system prompts used by the chatbot. These are multiline strings and may include formatting placeholders like `{subreddit}` and `{comment}`.
-	- `goodbye_message` - final message shown when the bot stops replying.
+- [code/shared_config.yaml](code/shared_config.yaml) - active configuration read by several scripts (`chatbot.py`, `get_convos.py`, `get_toxic_moderated_comments.py`). Key entries:
+    - `openai_models` - list of OpenAI model names the chatbot can use.
+    - `max_interactions` and `max_tokens` - limits used when building prompts and calling OpenAI.
+    - `conversations_file`, `to_contact_file`, `participants_file`, `subreddits_file`, `bad_accounts_file` - relative paths to project CSVs.
+    - `initial_message`, `clarifying_message`, `handoff_message`, `first_consented_message`, `prompt_dict` - message templates and system prompts used by the chatbot. These are multiline strings and may include formatting placeholders like `{subreddit}` and `{comment}`.
+    - `goodbye_message` - final message shown when the bot stops replying.
 
-- `code/example_config.yaml` - a trimmed example of the same keys with shortened messages. Use this as a starting point for custom configs.
+- [code/example_config.yaml](code/example_config.yaml) - a trimmed example of the same keys with shortened messages. Use this as a starting point for custom configs.
 
 
 ## Code files (brief descriptions)
