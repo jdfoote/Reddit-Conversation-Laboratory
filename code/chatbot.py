@@ -17,6 +17,9 @@ import auth
 
 # Open config file
 import yaml
+
+CONTROL_WEIGHT = 0
+
 # Open and read the YAML file
 with open('shared_config.yaml', 'r') as file:
     config = yaml.safe_load(file)
@@ -233,8 +236,8 @@ class Run:
         self.load_bad_accounts()
         self.load_conversations()
         self.load_subreddits()
-        self.conditions = ['default', 'narrative', 'norms', 'control', 'casual']
-        self.conditions = ['casual-general', 'control']
+        self.initial_message_types = list(config['initial_message'].keys())
+        self.prompt_options = list(config['prompt_dict'].keys())
         self.clarifying_message = config['clarifying_message']
 
     def load_bad_accounts(self):
@@ -280,14 +283,25 @@ class Run:
             prompt = prompt.format(user=user, subreddit_rules = subreddit_rules)
             return prompt
         except KeyError:
-            raise KeyError("Condition must be one of [default, narrative, norms]")
+            raise KeyError(f"Condition must be one of {self.prompt_options}")
             
             
     def load_conversations(self):
         try:
-            self.conversations = pd.read_csv(self.conversations_file)
+            self.conversations = pd.read_csv(self.conversations_file, dtype={'user_id': str,
+                                                            'message_type': str,
+                                                            'text': str,
+                                                            'created_utc': float,
+                                                            'subreddit': str,
+                                                            'conversation_or_message_id': str,
+                                                            'is_modmail': bool,
+                                                            'condition': str
+                                                            })
         except FileNotFoundError:
-            self.conversations = pd.DataFrame()
+            self.conversations = pd.DataFrame(columns=[
+                'user_id', 'message_type', 'text', 'created_utc',
+                'subreddit', 'conversation_or_message_id', 'is_modmail', 'condition'
+            ])
 
     def get_condition(self, user_id):
         '''Gets the condition that the user_id is in, from the participants dictionary'''
@@ -602,14 +616,16 @@ class Run:
             user = User(
                 user_name=row['author'],
                 user_id=uuid.uuid4(),
-                condition=random.choice(self.conditions),
+                ## TODO: Figure out where to weight the control condition (probably in config)
+                ## Should probably be smart about the different prompt and messaging strategy combinations
+                condition=random.choices(self.prompt_options + ['control'], weights = [1] * len(self.prompt_options) + [CONTROL_WEIGHT])[0],
                 messaging_strategy=messaging_strategy,
                 toxic_comments=row['toxic_comments'],
                 subreddit=row['subreddit'],
                 openai_model=random.choice(config['openai_models']),
                 # TODO put this logic somewhere else
-                first_consented_msg=random.choice(['conversational', 'not-proud']),
-                initial_message=random.choice(list(config['initial_message'].keys()))
+                first_consented_msg=random.choice(list(config['first_consented_message'].keys())),
+                initial_message=random.choice(self.initial_message_types)
             )
             logging.info(f"Sending initial message to {user.user_name}")
             # For now, sending messages to control

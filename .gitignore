@@ -1,3 +1,6 @@
+# Auth file (so it isn't accidentally committed)
+auth.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
