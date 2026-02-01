@@ -1,4 +1,4 @@
-# Reddit Conversation Library
+# Reddit Conversation Laboratory
 
 Authors: Dr. Jeremy Foote ([jdfoote@purdue.edu](mailto:jdfoote@purdue.edu)), Dr. Deepak Kumar ([kumarde@ucsd.edu](mailto:kumarde@ucsd.edu)), Hitesh Goel ([hitesh.goel@research.iiit.ac.in](mailto:hitesh.goel@research.iiit.ac.in)), Loizos Bitsikokos ([lbitsiko@purdue.edu](mailto:lbitsiko@purdue.edu))
 
