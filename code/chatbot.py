@@ -8,6 +8,7 @@ import time
 import random
 from openai import OpenAI
 from openai import BadRequestError
+from anthropic import Anthropic
 import uuid
 import logging
 from dataclasses import dataclass
@@ -60,8 +61,23 @@ args = parser.parse_args()
 logging.basicConfig( level=args.loglevel.upper() )
 logging.info( 'Logging now setup.' )
 
-# Initialize OpenAI client
-OpenAIClient=OpenAI(api_key = auth.openai_key)
+# Initialize AI clients conditionally based on available API keys
+OpenAIClient = None
+AnthropicClient = None
+
+if auth.openai_key:
+    try:
+        OpenAIClient = OpenAI(api_key = auth.openai_key)
+        logging.info('OpenAI client initialized successfully')
+    except Exception as e:
+        logging.warning(f'Failed to initialize OpenAI client: {e}')
+
+if auth.anthropic_key:
+    try:
+        AnthropicClient = Anthropic(api_key = auth.anthropic_key)
+        logging.info('Anthropic client initialized successfully')
+    except Exception as e:
+        logging.warning(f'Failed to initialize Anthropic client: {e}')
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -92,7 +108,8 @@ class User:
     messaging_strategy: str
     subreddit: str
     toxic_comments: str
-    openai_model: str
+    gai_model: str
+    gai_platform: str
     first_consented_msg: str
     initial_message: str
 
@@ -237,7 +254,7 @@ class Run:
         self.load_conversations()
         self.load_subreddits()
         self.initial_message_types = list(config['initial_message'].keys())
-        self.prompt_options = list(config['prompt_dict'].keys())
+        self.prompt_options = list(config['gai_prompt'].keys())
         self.clarifying_message = config['clarifying_message']
 
     def load_bad_accounts(self):
@@ -277,9 +294,9 @@ class Run:
                 logging.error("Error getting sub rules")
                 subreddit_rules = ''
 
-        prompt_dict = config['prompt_dict'] 
+        gai_prompt = config['gai_prompt'] 
         try:
-            prompt = prompt_dict[user.condition]
+            prompt = gai_prompt[user.condition]
             prompt = prompt.format(user=user, subreddit_rules = subreddit_rules)
             return prompt
         except KeyError:
@@ -341,7 +358,8 @@ class Run:
                                                 toxic_comments=row['toxic_comments'], 
                                                 condition=row['condition'], 
                                                 messaging_strategy=row['messaging_strategy'],
-                                                openai_model=row['openai_model'],
+                                                gai_model=row['gai_model'],
+                                                gai_platform=row['gai_platform'],
                                                 first_consented_msg=row['first_consented_msg'],
                                                 initial_message=row['initial_message']
                                                 )
@@ -612,7 +630,17 @@ class Run:
         df = df[~df.author.isin(self.username_to_id_map.keys())]
         df = df[~df.author.isin(self.bad_accounts)]
         df = df.iloc[:max_contacts]
+        
+        # Build list of all available models from config
+        all_models = []
+        for platform, models in config['gai_models'].items():
+            for model in models:
+                all_models.append((platform, model))
+        
         for i, row in df.iterrows():
+            # Randomly select a platform and model
+            selected_platform, selected_model = random.choice(all_models)
+            
             user = User(
                 user_name=row['author'],
                 user_id=uuid.uuid4(),
@@ -622,7 +650,8 @@ class Run:
                 messaging_strategy=messaging_strategy,
                 toxic_comments=row['toxic_comments'],
                 subreddit=row['subreddit'],
-                openai_model=random.choice(config['openai_models']),
+                gai_platform=selected_platform,
+                gai_model=selected_model,
                 # TODO put this logic somewhere else
                 first_consented_msg=random.choice(list(config['first_consented_message'].keys())),
                 initial_message=random.choice(self.initial_message_types)
@@ -644,7 +673,7 @@ class Run:
             with open(self.participants_file, 'w') as f:
                 writer = csv.writer(f)
                 writer.writerow(['author', 'author_id', 'condition', 'subreddit', 
-                                 'toxic_comments', 'messaging_strategy', 'openai_model', 'first_consented_msg','initial_message'])
+                                 'toxic_comments', 'messaging_strategy', 'gai_platform', 'gai_model', 'first_consented_msg','initial_message'])
         
         with open(self.participants_file, 'a') as f:
             out = csv.writer(f)
@@ -654,7 +683,8 @@ class Run:
                             author.subreddit,
                             author.toxic_comments,
                             author.messaging_strategy,
-                            author.openai_model,
+                            author.gai_platform,
+                            author.gai_model,
                             author.first_consented_msg,
                             author.initial_message
                             ])
@@ -772,9 +802,9 @@ class Run:
 
         bot_instructions = self.get_condition_prompt(user)
         message = self.get_ai_reply(conversation=conversation, bot_instructions=bot_instructions,
-                                    openai_model=user.openai_model)
+                                    gai_platform=user.gai_platform, gai_model=user.gai_model)
         if message == 'Error occurred.':
-            logging.error(f"OpenAI returned: {message}. Not sending.")
+            logging.error(f"AI returned: {message}. Not sending.")
             return None
         logging.info(f"Preparing to send message: {message}")
         return self.send_reply(user, message, conversation, message_type = 'AI_reply')
@@ -783,25 +813,23 @@ class Run:
         try:
             return self.participants.loc[self.participants.author_id == user_id, 'messaging_strategy'].values[0]
         except KeyError:
-            raise("Tried to find {user_id} in the participants file, but it wasn't there")
+            raise Exception("Tried to find {user_id} in the participants file, but it wasn't there")
 
 
     def get_toxic_comments(self, user_id):
         try:
             return self.participants.loc[self.participants.author_id == user_id, 'toxic_comments'].values[0]
         except KeyError:
-            raise("Tried to find {user_id} in the participants file, but it wasn't there")
+            raise Exception("Tried to find {user_id} in the participants file, but it wasn't there")
 
-    def get_ai_reply(self, conversation, bot_instructions, openai_model='gpt-3.5-turbo'):
-        ## TODO: If we include more models, don't hard code this, but put it in config
-        try:
-            max_tokens = config['max_tokens'][openai_model]
-        except KeyError: 
-            raise(f"openai_model must be one of {config['openai_models']}")
-        except Exception as e:  # Unknown Exception
-            raise(e)
+    def get_ai_reply(self, conversation, bot_instructions, gai_platform, gai_model):
+        ## Check for maximum interactions
         if len(conversation.messages) > config['max_interactions']:
             return config['goodbye_message']
+        
+        # Get max tokens
+        max_tokens = config['max_tokens']
+        
         message_len = len(bot_instructions.split())
         messages=[{"role": "system", "content": bot_instructions}]
         for message in conversation.messages:
@@ -811,35 +839,54 @@ class Run:
                 role = 'assistant'
             messages.append({"role": role, "content": message.text})
             message_len += len(message.text.split())
+        
         if message_len > max_tokens:
             if len(conversation.messages) == 1:
                 return "I'm sorry, but your response is too long. Can you try something shorter?"
             
             conversation.messages = conversation.messages[1:]
             bot_instructions += " You are in the middle of a conversation with the user."
-            return self.get_ai_reply(conversation, bot_instructions)
+            return self.get_ai_reply(conversation, bot_instructions, gai_platform, gai_model)
         
         try:
-            gpt_response = OpenAIClient.chat.completions.create(
-                model=openai_model,
-                messages = messages)
-
-            reply = gpt_response.choices[0].message.content
+            if gai_platform == 'openai':
+                if OpenAIClient is None:
+                    logging.error("OpenAI client not initialized. Check OPENAI_API_KEY in .env")
+                    return "Error occurred."
+                response = OpenAIClient.chat.completions.create(
+                    model=gai_model,
+                    messages=messages)
+                reply = response.choices[0].message.content
+            
+            elif gai_platform == 'claude':
+                if AnthropicClient is None:
+                    logging.error("Anthropic client not initialized. Check ANTHROPIC_API_KEY in .env")
+                    return "Error occurred."
+                # Claude API requires separating system prompt from messages
+                claude_messages = [msg for msg in messages if msg['role'] != 'system']
+                response = AnthropicClient.messages.create(
+                    model=gai_model,
+                    max_tokens=1024,
+                    system=bot_instructions,
+                    messages=claude_messages)
+                reply = response.content[0].text
+            
+            else:
+                logging.error(f"Unknown GAI platform: {gai_platform}")
+                return "Error occurred."
         
         except BadRequestError as e:
             logging.warning(f"Got a BadRequestError for {messages}. Error is {e}")
-            #if e['error']['message'].startswith("Sorry! We've encountered an issue with repetitive patterns"):
             return "I can't figure out how to respond to your message. Could you try again?"
-        #except:
-            ## If it's too long, then try removing the earliest message
-            #reply = 'Error occurred.'
-            #logging.warning('Some unknown error occured while trying to genrate gpt_response. Possibly, it is receiving too many API calls at once.')
+        except Exception as e:
+            logging.error(f"Error calling {gai_platform} API: {e}")
+            return "I encoutered an error and can't figure out how to respond to your message. Could you try again?"
                 
         return reply
 
     def archive_modmail(self, conversation):
         if not conversation.messages[-1].is_modmail:
-            logging.warn(f"Can't archive conversation with {conversation.messages[0].user_id}. Not in modmail")
+            logging.warning(f"Can't archive conversation with {conversation.messages[0].user_id}. Not in modmail")
             return
         sr = conversation.messages[-1].subreddit
         id = conversation.messages[-1].conversation_or_message_id
