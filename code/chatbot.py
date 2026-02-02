@@ -21,7 +21,7 @@ import yaml
 CONTROL_WEIGHT = 0
 
 # Open and read the YAML file
-with open('shared_config.yaml', 'r') as file:
+with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
 ###########

@@ -1,0 +1,81 @@
+max_interactions : 50
+
+gai_models: 
+    openai:
+        - gpt-5.2
+    claude:
+        - claude-sonnet-4-5
+
+max_tokens:
+    gpt-3.5-turbo: 3000
+    gpt-4: 7000
+    gpt-4-1106-preview: 7000
+
+to_contact_file : '../data/to_contact.csv'
+participants_file : '../data/participants.csv'
+subreddits_file : '../data/subreddit_rules.csv'
+conversations_file : '../data/conversations.csv'
+bad_accounts_file : '../data/bad_accounts.csv'
+
+
+initial_message :
+    initial_message_1: |
+        Hello,
+
+        I am a bot designed by researchers at INSTIUTION NAME.
+
+        I would like to chat with you about TOPIC.
+
+        **If you would like to chat with me, just reply "yes" to this message.**
+
+        If you do choose to chat with me, you will be part of a research study. To learn more about the study and the data we will gather, visit the STUDY INFORMATION SITE.
+
+        Please note that in order to participate in this study, you must be at least 18 years old.
+    initial_message_2: |
+        Hello,
+
+        I am a bot designed by researchers at INSTIUTION NAME.
+
+        I would like to chat with you about TOPIC.
+
+        **If you would like to chat with me, just reply "yes" to this message.**
+
+        If you do choose to chat with me, you will be part of a research study. To learn more about the study and the data we will gather, visit the STUDY INFORMATION SITE.
+
+        Please note that in order to participate in this study, you must be at least 18 years old.
+
+clarifying_message : "Please reply with 'yes' if you would like to chat with the chatbot and participate in the study or 'no' if you would not like to participate."
+
+handoff_message : "Thank you for your interest in participating in our study. If you are selected to chat with the chatbot, you should receive a DM from this account within the next few minutes. Please reply to that message to begin the chat."
+
+first_consented_message :
+    first_consented_1: |
+        Thank you for agreeing to chat with me. I hope that we can have a productive conversation. Let me start by asking you a question. QUESTION 1. 
+    first_consented_2: |
+        Thank you for agreeing to chat with me. I hope that we can have a productive conversation. Let me start by asking you a question. QUESTION 2. 
+
+gai_prompt :
+    prompt_1: | 
+        Context: You are a chatbot designed by a team of researchers at INSTITUTION NAME.
+        
+        You are designed to chat with people on Reddit and to convince them of X.
+        
+        You should focus on the following rhetorical strategy: STRATEGY 1.
+
+        ADDITIONAL INSTRUCTIONS 1.
+        
+        If the user has questions about the study, direct them to the study website at STUDY WEBSITE URL and inform them that they can contact the study team (RESEARCH TEAM CONTACT INFO).
+
+    prompt_2: |
+        Context: You are a chatbot designed by a team of researchers at INSTITUTION NAME.
+        
+        You are designed to chat with people on Reddit and to convince them of X.
+        
+        You should focus on the following rhetorical strategy: STRATEGY 2.
+
+        ADDITIONAL INSTRUCTIONS 2.
+        
+        If the user has questions about the study, direct them to the study website at STUDY WEBSITE URL and inform them that they can contact the study team (RESEARCH TEAM CONTACT INFO).
+
+
+goodbye_message : "Thanks for chatting with me. I've reached my maximum number of replies. If you have any questions about the study please reach out to the study team (STUDY TEAM CONTACT INFO)."

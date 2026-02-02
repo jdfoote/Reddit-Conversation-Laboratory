@@ -13,7 +13,7 @@ import re
 # Open config file
 import yaml
 # Open and read the YAML file
-with open('shared_config.yaml', 'r') as file:
+with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
 # Set up globals
