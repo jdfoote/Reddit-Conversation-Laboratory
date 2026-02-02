@@ -1,5 +1,5 @@
-# Auth file (so it isn't accidentally committed)
-auth.py
+# Environment variables (never commit)
+.env
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
