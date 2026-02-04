@@ -1,0 +1,42 @@
+# Example crontab file for Reddit Conversation Laboratory
+# 
+# This file demonstrates how to schedule the RCL scripts to run automatically.
+# To use this crontab:
+# 1. Copy this file and adjust the paths to match your installation
+# 2. Edit the USER, PROJECT_PATH, and CONDA_PATH variables below
+# 3. Install with: crontab your-edited-file
+# 4. Verify with: crontab -l
+#
+# Cron format: minute hour day-of-month month day-of-week command
+# Special strings: @reboot, @hourly, @daily, @weekly, @monthly
+
+# === CONFIGURATION ===
+# Set these variables to match your environment:
+# USER=your_username
+# PROJECT_PATH=/path/to/Reddit-Conversation-Laboratory
+# CONDA_PATH=/path/to/conda  (e.g., /home/user/miniconda3)
+
+# === SCHEDULED TASKS ===
+
+# Run chatbot every minute
+# The chatbot checks for new messages and responds to conversations
+* * * * * cd /path/to/Reddit-Conversation-Laboratory/code && /path/to/conda/envs/toxic_talk/bin/python chatbot.py >> /path/to/Reddit-Conversation-Laboratory/logs/chatbot.log 2>&1
+
+# Run participant identification and modlog collection twice per day (at 6 AM and 6 PM)
+# This script scans subreddit mod logs for removed toxic comments and identifies potential participants
+0 6,18 * * * cd /path/to/Reddit-Conversation-Laboratory/code && /path/to/conda/envs/toxic_talk/bin/python get_toxic_moderated_comments.py >> /path/to/Reddit-Conversation-Laboratory/logs/modlog.log 2>&1
+
+# Run participant data collection once per day (at 2 AM)
+# This script fetches recent comments and suspension status for participants
+0 2 * * * cd /path/to/Reddit-Conversation-Laboratory/code && /path/to/conda/envs/toxic_talk/bin/python fetch_comms/retrieve_latest_user_comments.py >> /path/to/Reddit-Conversation-Laboratory/logs/participant_comments.log 2>&1
+
+# === NOTES ===
+# - All times are in the server's local timezone
+# - Log files help debug issues; create the logs/ directory if it doesn't exist
+# - The conda environment 'toxic_talk' must be created first (see README.md)
+# - Ensure all necessary API credentials are configured in .env or auth.py
+# - You may want to adjust logging levels by adding command-line arguments (e.g., --loglevel info)
+#
+# === ALTERNATIVE USING CONDA ACTIVATE ===
+# If you prefer to use 'conda activate', you can structure commands like:
+# * * * * * cd /path/to/Reddit-Conversation-Laboratory/code && bash -c "source /path/to/conda/etc/profile.d/conda.sh && conda activate toxic_talk && python chatbot.py" >> /path/to/Reddit-Conversation-Laboratory/logs/chatbot.log 2>&1

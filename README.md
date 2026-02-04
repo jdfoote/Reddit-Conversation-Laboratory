@@ -19,6 +19,7 @@ Top-level:
 
 - [environment.yml](environment.yml) - Conda environment specifications
 - [Snakefile](Snakefile) - Snakemake pipeline that puts together augmentation and cleaning rules
+- [crontab.example](crontab.example) - Example crontab file for scheduling automated script execution
 - [code/](code/) - Python scripts
 - [data/](data/) - Expected output and input data folders
 
@@ -65,6 +66,22 @@ The repository uses a small set of YAML configuration files (located in `code/`)
 
 - [code/example_config.yaml](code/example_config.yaml) - a trimmed example of the same keys with shortened messages. Use this as a starting point for custom configs.
 
+## Scheduling / Automation
+
+The repository includes an example crontab file ([crontab.example](crontab.example)) that demonstrates how to schedule the RCL scripts to run automatically. The recommended schedule is:
+
+- **Chatbot** ([code/chatbot.py](code/chatbot.py)): Every minute - checks for new messages and responds to conversations
+- **Participant identification / modlog collection** ([code/get_toxic_moderated_comments.py](code/get_toxic_moderated_comments.py)): Twice per day - scans subreddit mod logs for toxic comments
+- **Participant data collection** ([code/fetch_comms/retrieve_latest_user_comments.py](code/fetch_comms/retrieve_latest_user_comments.py)): Once per day - fetches recent comments and suspension status
+
+To use the example crontab:
+
+1. Copy and edit `crontab.example` to match your installation paths
+2. Create a `logs/` directory in the repository root for log files
+3. Install with `crontab your-edited-file`
+4. Verify with `crontab -l`
+
+See [crontab.example](crontab.example) for detailed instructions and alternative configurations.
 
 ## Code files (brief descriptions)
 
