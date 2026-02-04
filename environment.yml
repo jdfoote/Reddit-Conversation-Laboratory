@@ -1,4 +1,4 @@
-name: toxic_talk
+name: rcl
 channels:
   - conda-forge
 dependencies:

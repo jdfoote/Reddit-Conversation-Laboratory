@@ -31,14 +31,14 @@ CLASSIFIERS = ["TOXICITY", "SEVERE_TOXICITY"]
 # Regex to remove quoted text
 remove_pattern = re.compile(r'^>.*\n', re.MULTILINE)
 
-subreddits = ['creepypms', 'socialskills', 'india', 'unitedstatesofindia', 'aww', 'tifu','futurology']
+subreddits = config['subreddits']
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 to_contact_file = os.path.join(script_dir, config['to_contact_file'])
 contacted = pd.read_csv(to_contact_file)
 
 # Set up writer
-out_file =  os.path.join(script_dir, '../tox_users_to_contact.csv')
+out_file =  os.path.join(script_dir, config['tox_users_to_contact_file'])
 f = open(out_file, 'w')
 writer = csv.writer(f)
 writer.writerow(['author','subreddit', 'toxic_comments', 'timestamp', 'moderator', 'tox_score'])

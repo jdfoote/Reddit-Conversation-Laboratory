@@ -6,10 +6,11 @@ gai_models:
     claude:
         - claude-sonnet-4-5
 
-max_tokens:
-    gpt-3.5-turbo: 3000
-    gpt-4: 7000
-    gpt-4-1106-preview: 7000
+subreddits:
+    - testsubreddit1
+    - testsubreddit2
+
+max_tokens: 30000
 
 to_contact_file : '../data/to_contact.csv'
 participants_file : '../data/participants.csv'
@@ -17,12 +18,13 @@ subreddits_file : '../data/subreddit_rules.csv'
 conversations_file : '../data/conversations.csv'
 bad_accounts_file : '../data/bad_accounts.csv'
 
+subject_line : "Chat with a chatbot about TOPIC"
 
 initial_message :
     initial_message_1: |
-        Hello,
+        Hi {username},
 
-        I am a bot designed by researchers at INSTIUTION NAME.
+        I am a bot designed by researchers at INSTIUTION NAME, and working with the moderators of r/{subreddit}.
 
         I would like to chat with you about TOPIC.
 
@@ -32,9 +34,9 @@ initial_message :
 
         Please note that in order to participate in this study, you must be at least 18 years old.
     initial_message_2: |
-        Hello,
+        Hi {username},
 
-        I am a bot designed by researchers at INSTIUTION NAME.
+        I am a bot designed by researchers at INSTIUTION NAME, and working with the moderators of r/{subreddit}.
 
         I would like to chat with you about TOPIC.
 

@@ -2,9 +2,9 @@
 
 Authors: Dr. Jeremy Foote ([jdfoote@purdue.edu](mailto:jdfoote@purdue.edu)), Dr. Deepak Kumar ([kumarde@ucsd.edu](mailto:kumarde@ucsd.edu)), Hitesh Goel ([hitesh.goel@research.iiit.ac.in](mailto:hitesh.goel@research.iiit.ac.in)), Loizos Bitsikokos ([lbitsiko@purdue.edu](mailto:lbitsiko@purdue.edu))
 
-Software toolkit and pipeline for conducting field experiments with AI agents on Reddit. This repository is a Python-based software that identifies participants, messages and consents them, and conducts conversational experiments with researcher-designed AI chatbots. In addition to storing all conversations, the software can also record participant behavior before and after conversations. 
+Reddit Conversation Laboratory is a software toolkit and pipeline for conducting field experiments with AI agents on Reddit. It is Python-based software that identifies participants, recruits and consents them, and conducts conversational experiments with researcher-designed AI chatbots. 
 
-The toolkit also contains scripts to fetch Reddit comments, prepare conversation-level data, augment comments with moderation and suspension signals, and generate summarized outputs for downstream analysis.
+In addition to conducting experiments and storing conversations, the software can also record participant behavior before and after conversations. The toolkit contains scripts to fetch Reddit comments, prepare conversation-level data, augment comments with moderation and suspension signals, and generate summarized outputs for downstream analysis.
 
 ## Quick overview
 - Chatbot and conversation software: [code/chatbot.py](code/chatbot.py) contains code to set-up and run the chatbot.
@@ -33,8 +33,28 @@ Create the conda environment from the provided specs:
 
 ```bash
 conda env create -f environment.yml
-conda activate toxic_talk
+conda activate rcl
 ```
+
+The default name for the environment is `rcl`. To change this, edit the first line in the `environment.yml` file.
+
+## Running experiments and collecting data
+
+In order to run chatbot experiments, you will need to set up Reddit API credentials and an OpenAI API key. On Reddit, this means setting up a Reddit app to get a client ID and secret. See the [PRAW documentation](https://praw.readthedocs.io/en/stable/getting_started/authentication.html) for details.
+
+### Environment variables (.env)
+
+Once you have set up your Reddit app and obtained your API credentials, copy the `.env.example` file to `.env` and fill in your real credentials:
+
+```bash
+cp .env.example .env
+```
+
+The `.env` file is ignored by git to avoid accidentally committing your keys.
+
+### Configuring the chatbot
+
+
 
 ## Running the pipeline (Snakemake)
 
@@ -56,11 +76,11 @@ snakemake -j 4
 
 The repository uses a small set of YAML configuration files (located in `code/`) to control messaging text, file paths, and model settings. The two primary files are:
 
-- [code/shared_config.yaml](code/shared_config.yaml) - active configuration read by several scripts (`chatbot.py`, `get_convos.py`, `get_toxic_moderated_comments.py`). Key entries:
+- [code/config.yaml](code/config.yaml) - active configuration read by several scripts (`chatbot.py`, `get_convos.py`, `get_toxic_moderated_comments.py`). Key entries:
     - `openai_models` - list of OpenAI model names the chatbot can use.
     - `max_interactions` and `max_tokens` - limits used when building prompts and calling OpenAI.
     - `conversations_file`, `to_contact_file`, `participants_file`, `subreddits_file`, `bad_accounts_file` - relative paths to project CSVs.
-    - `initial_message`, `clarifying_message`, `handoff_message`, `first_consented_message`, `prompt_dict` - message templates and system prompts used by the chatbot. These are multiline strings and may include formatting placeholders like `{subreddit}` and `{comment}`.
+    - `initial_message`, `clarifying_message`, `handoff_message`, `first_consented_message`, `gai_prompt` - message templates and system prompts used by the chatbot. These are multiline strings and may include formatting placeholders like `{subreddit}` and `{comment}`.
     - `goodbye_message` - final message shown when the bot stops replying.
 
 - [code/example_config.yaml](code/example_config.yaml) - a trimmed example of the same keys with shortened messages. Use this as a starting point for custom configs.
