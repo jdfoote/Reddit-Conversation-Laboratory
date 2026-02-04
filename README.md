@@ -74,6 +74,18 @@ The repository includes an example crontab file ([crontab.example](crontab.examp
 - **Participant identification / modlog collection** ([code/get_toxic_moderated_comments.py](code/get_toxic_moderated_comments.py)): Twice per day - scans subreddit mod logs for toxic comments
 - **Participant data collection** ([code/fetch_comms/retrieve_latest_user_comments.py](code/fetch_comms/retrieve_latest_user_comments.py)): Once per day - fetches recent comments and suspension status
 
+### Preventing Concurrent Executions
+
+The chatbot script includes built-in file locking to prevent multiple instances from running simultaneously. This is important because the chatbot may take longer than a minute to complete, and without locking, cron would start multiple overlapping instances.
+
+The locking mechanism:
+- Uses `fcntl` file locking (works on Unix/Linux systems)
+- Creates a `.chatbot.lock` file in the `code/` directory
+- Gracefully exits if another instance is already running
+- Automatically releases the lock when the script completes
+
+For additional safety or alternative approaches, you can also use the system-level `flock` command in your crontab. See [crontab.example](crontab.example) for examples.
+
 To use the example crontab:
 
 1. Copy and edit `crontab.example` to match your installation paths

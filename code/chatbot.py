@@ -98,7 +98,7 @@ class FileLock:
             fcntl.flock(self.lockfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             logging.info(f"Acquired lock: {self.lockfile_path}")
             return self
-        except IOError:
+        except (BlockingIOError, OSError) as e:
             # Another instance is already running
             logging.warning(f"Another instance is already running. Lock file: {self.lockfile_path}")
             self.lockfile.close()
@@ -106,9 +106,14 @@ class FileLock:
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.lockfile:
-            fcntl.flock(self.lockfile.fileno(), fcntl.LOCK_UN)
-            self.lockfile.close()
-            logging.info(f"Released lock: {self.lockfile_path}")
+            try:
+                fcntl.flock(self.lockfile.fileno(), fcntl.LOCK_UN)
+            except (OSError, ValueError):
+                # Lock may already be released or file closed
+                pass
+            finally:
+                self.lockfile.close()
+                logging.info(f"Released lock: {self.lockfile_path}")
 
 
 def main():

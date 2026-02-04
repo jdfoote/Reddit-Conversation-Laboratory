@@ -21,7 +21,7 @@ class FileLock:
             fcntl.flock(self.lockfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             print(f"Acquired lock: {self.lockfile_path}")
             return self
-        except IOError:
+        except (BlockingIOError, OSError) as e:
             # Another instance is already running
             print(f"Another instance is already running. Lock file: {self.lockfile_path}")
             self.lockfile.close()
@@ -29,9 +29,14 @@ class FileLock:
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.lockfile:
-            fcntl.flock(self.lockfile.fileno(), fcntl.LOCK_UN)
-            self.lockfile.close()
-            print(f"Released lock: {self.lockfile_path}")
+            try:
+                fcntl.flock(self.lockfile.fileno(), fcntl.LOCK_UN)
+            except (OSError, ValueError):
+                # Lock may already be released or file closed
+                pass
+            finally:
+                self.lockfile.close()
+                print(f"Released lock: {self.lockfile_path}")
 
 
 def test_file_lock():
@@ -66,15 +71,19 @@ class FileLock:
             fcntl.flock(self.lockfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             print(f"ERROR: Second lock should not have been acquired!")
             return self
-        except IOError:
+        except (BlockingIOError, OSError) as e:
             print("✓ Second lock correctly prevented (subprocess exiting with 0)")
             self.lockfile.close()
             sys.exit(0)
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.lockfile:
-            fcntl.flock(self.lockfile.fileno(), fcntl.LOCK_UN)
-            self.lockfile.close()
+            try:
+                fcntl.flock(self.lockfile.fileno(), fcntl.LOCK_UN)
+            except (OSError, ValueError):
+                pass
+            finally:
+                self.lockfile.close()
 
 try:
     with FileLock('{lockfile_path}'):
