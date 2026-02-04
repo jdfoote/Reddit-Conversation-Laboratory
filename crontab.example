@@ -42,4 +42,4 @@
 #
 # === ALTERNATIVE USING CONDA ACTIVATE ===
 # If you prefer to use 'conda activate', you can structure commands like:
-# * * * * * flock -n /tmp/chatbot.lock -c "cd /path/to/Reddit-Conversation-Laboratory/code && bash -c 'source /path/to/conda/etc/profile.d/conda.sh && conda activate toxic_talk && python chatbot.py'" >> /path/to/Reddit-Conversation-Laboratory/logs/chatbot.log 2>&1
+# * * * * * flock -n /tmp/chatbot.lock bash -c "cd /path/to/Reddit-Conversation-Laboratory/code && source /path/to/conda/etc/profile.d/conda.sh && conda activate toxic_talk && python chatbot.py >> /path/to/Reddit-Conversation-Laboratory/logs/chatbot.log 2>&1"
