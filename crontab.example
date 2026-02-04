@@ -20,6 +20,8 @@
 
 # Run chatbot every minute
 # The chatbot checks for new messages and responds to conversations
+# NOTE: The chatbot.py script includes built-in file locking to prevent concurrent executions.
+# Alternatively, you can use flock for additional safety (see alternative syntax below).
 * * * * * cd /path/to/Reddit-Conversation-Laboratory/code && /path/to/conda/envs/toxic_talk/bin/python chatbot.py >> /path/to/Reddit-Conversation-Laboratory/logs/chatbot.log 2>&1
 
 # Run participant identification and modlog collection twice per day (at 6 AM and 6 PM)
@@ -36,6 +38,12 @@
 # - The conda environment 'toxic_talk' must be created first (see README.md)
 # - Ensure all necessary API credentials are configured in .env or auth.py
 # - You may want to adjust logging levels by adding command-line arguments (e.g., --loglevel info)
+# - The chatbot script has built-in file locking to prevent multiple instances from running simultaneously
+#
+# === ALTERNATIVE USING FLOCK (SYSTEM-LEVEL LOCKING) ===
+# If you want to add an additional layer of locking at the system level, you can use flock:
+# * * * * * flock -n /tmp/chatbot.lock -c "cd /path/to/Reddit-Conversation-Laboratory/code && /path/to/conda/envs/toxic_talk/bin/python chatbot.py" >> /path/to/Reddit-Conversation-Laboratory/logs/chatbot.log 2>&1
+# The -n flag means non-blocking: if the lock is held, flock exits immediately rather than waiting.
 #
 # === ALTERNATIVE USING CONDA ACTIVATE ===
 # If you prefer to use 'conda activate', you can structure commands like:
