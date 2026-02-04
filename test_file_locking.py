@@ -66,7 +66,7 @@ class FileLock:
         self.lockfile = None
     
     def __enter__(self):
-        self.lockfile = open(self.lockfile_path, 'w')
+        self.lockfile = open(self.lockfile_path, 'a')
         try:
             fcntl.flock(self.lockfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             print(f"ERROR: Second lock should not have been acquired!")

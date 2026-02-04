@@ -92,7 +92,7 @@ class FileLock:
         self.lockfile = None
     
     def __enter__(self):
-        self.lockfile = open(self.lockfile_path, 'w')
+        self.lockfile = open(self.lockfile_path, 'a')
         try:
             # Try to acquire an exclusive lock without blocking
             fcntl.flock(self.lockfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
