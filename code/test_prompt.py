@@ -162,8 +162,8 @@ def have_conversation(gai_platform, gai_model, bot_prompt, first_message,
     print(f"BOT: {first_message}\n")
     conversation_messages.append({"role": "assistant", "content": first_message})
     
-    # Get max tokens for the model
-    max_tokens = config.get('max_tokens', {}).get(gai_model, 7000)
+    # Get max tokens for the model (use config value or default)
+    max_tokens = config.get('max_tokens', {}).get(gai_model, gai_interface.DEFAULT_MAX_TOKENS)
     max_interactions = config.get('max_interactions', 50)
     
     interaction_count = 0

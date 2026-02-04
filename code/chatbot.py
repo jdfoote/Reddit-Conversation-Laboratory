@@ -812,8 +812,8 @@ class Run:
                 role = 'assistant'
             messages.append({"role": role, "content": message.text})
         
-        # Get max tokens from config
-        max_tokens = config['max_tokens'].get(gai_model, 7000)
+        # Get max tokens from config (use default if not specified for this model)
+        max_tokens = config['max_tokens'].get(gai_model, gai_interface.DEFAULT_MAX_TOKENS)
         
         # Call the gai_interface module
         return gai_interface.get_ai_reply(

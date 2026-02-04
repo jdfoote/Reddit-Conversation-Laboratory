@@ -11,6 +11,9 @@ from openai import OpenAI, BadRequestError
 from anthropic import Anthropic
 import auth
 
+# Default maximum token limit for conversation context
+DEFAULT_MAX_TOKENS = 7000
+
 # Initialize AI clients conditionally based on available API keys
 OpenAIClient = None
 AnthropicClient = None
@@ -30,7 +33,7 @@ if auth.anthropic_key:
         logging.warning(f'Failed to initialize Anthropic client: {e}')
 
 
-def get_ai_reply(messages, bot_instructions, gai_platform, gai_model, max_tokens=7000, 
+def get_ai_reply(messages, bot_instructions, gai_platform, gai_model, max_tokens=None, 
                  max_interactions=None, goodbye_message=None, conversation_length=None):
     """
     Get an AI reply from the specified platform and model.
@@ -40,7 +43,7 @@ def get_ai_reply(messages, bot_instructions, gai_platform, gai_model, max_tokens
         bot_instructions: System prompt/instructions for the bot
         gai_platform: 'openai' or 'claude'
         gai_model: Model name (e.g., 'gpt-4', 'claude-sonnet-4-5')
-        max_tokens: Maximum token limit for the conversation context
+        max_tokens: Maximum token limit for the conversation context (defaults to DEFAULT_MAX_TOKENS)
         max_interactions: Maximum number of interactions (optional)
         goodbye_message: Message to return when max_interactions is reached (optional)
         conversation_length: Current conversation length for checking max_interactions (optional)
@@ -48,8 +51,12 @@ def get_ai_reply(messages, bot_instructions, gai_platform, gai_model, max_tokens
     Returns:
         String reply from the AI model, or an error message
     """
+    # Use default max_tokens if not provided
+    if max_tokens is None:
+        max_tokens = DEFAULT_MAX_TOKENS
+    
     # Check for maximum interactions if provided
-    if max_interactions and conversation_length and conversation_length > max_interactions:
+    if max_interactions and conversation_length and conversation_length >= max_interactions:
         return goodbye_message if goodbye_message else "Thank you for the conversation."
     
     # Calculate message length
@@ -62,12 +69,11 @@ def get_ai_reply(messages, bot_instructions, gai_platform, gai_model, max_tokens
         if len(messages) == 1:
             return "I'm sorry, but your response is too long. Can you try something shorter?"
         
-        # Recursively call with truncated messages
+        # Recursively call with truncated messages (keep conversation_length unchanged)
         truncated_messages = messages[1:]
         updated_instructions = bot_instructions + " You are in the middle of a conversation with the user."
         return get_ai_reply(truncated_messages, updated_instructions, gai_platform, gai_model, 
-                          max_tokens, max_interactions, goodbye_message, 
-                          conversation_length - 1 if conversation_length else None)
+                          max_tokens, max_interactions, goodbye_message, conversation_length)
     
     # Build final message list with system prompt
     final_messages = [{"role": "system", "content": bot_instructions}] + messages
