@@ -14,8 +14,6 @@ import logging
 from dataclasses import dataclass
 import argparse
 import json
-import fcntl
-import sys
 import auth
 
 # Open config file
@@ -82,38 +80,6 @@ if auth.anthropic_key:
         logging.warning(f'Failed to initialize Anthropic client: {e}')
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-
-
-class FileLock:
-    """Context manager for file-based locking to prevent concurrent executions."""
-    
-    def __init__(self, lockfile_path):
-        self.lockfile_path = lockfile_path
-        self.lockfile = None
-    
-    def __enter__(self):
-        self.lockfile = open(self.lockfile_path, 'a')
-        try:
-            # Try to acquire an exclusive lock without blocking
-            fcntl.flock(self.lockfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            logging.info(f"Acquired lock: {self.lockfile_path}")
-            return self
-        except (BlockingIOError, OSError) as e:
-            # Another instance is already running
-            logging.warning(f"Another instance is already running. Lock file: {self.lockfile_path}")
-            self.lockfile.close()
-            sys.exit(0)
-    
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.lockfile:
-            try:
-                fcntl.flock(self.lockfile.fileno(), fcntl.LOCK_UN)
-            except (OSError, ValueError):
-                # Lock may already be released or file closed
-                pass
-            finally:
-                self.lockfile.close()
-                logging.info(f"Released lock: {self.lockfile_path}")
 
 
 def main():
@@ -951,7 +917,4 @@ def get_curr_timestamp():
     return pd.Timestamp.now().timestamp()
                 
 if __name__ == '__main__':
-    # Use file locking to prevent concurrent executions
-    lockfile_path = os.path.join(script_dir, '.chatbot.lock')
-    with FileLock(lockfile_path):
-        main()
+    main()

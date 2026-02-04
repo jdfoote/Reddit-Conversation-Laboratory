@@ -76,15 +76,13 @@ The repository includes an example crontab file ([crontab.example](crontab.examp
 
 ### Preventing Concurrent Executions
 
-The chatbot script includes built-in file locking to prevent multiple instances from running simultaneously. This is important because the chatbot may take longer than a minute to complete, and without locking, cron would start multiple overlapping instances.
+The chatbot may take longer than a minute to complete, and without locking, cron would start multiple overlapping instances. The example crontab uses the `flock` command to prevent this:
 
-The locking mechanism:
-- Uses `fcntl` file locking (works on Unix/Linux systems)
-- Creates a `.chatbot.lock` file in the `code/` directory
-- Gracefully exits if another instance is already running
-- Automatically releases the lock when the script completes
+```bash
+* * * * * flock -n /tmp/chatbot.lock -c "cd /path/to/code && python chatbot.py" >> logs/chatbot.log 2>&1
+```
 
-For additional safety or alternative approaches, you can also use the system-level `flock` command in your crontab. See [crontab.example](crontab.example) for examples.
+The `-n` flag makes flock non-blocking: if another instance is running, the command exits immediately rather than waiting.
 
 To use the example crontab:
 
