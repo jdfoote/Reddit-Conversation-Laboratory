@@ -106,7 +106,7 @@ The Snakemake pipeline handles data augmentation and summarization:
 **Important Environment Note:** 
 - The `environment.yml` defines a conda environment named `rcl`
 - The `Snakefile` rules reference a conda environment named `toxic_talk`
-- This appears to be a legacy naming issue that should be corrected
+- This is a known bug in the repository that should be corrected
 
 **Recommended fix** (Update Snakefile to use the correct environment name):
 ```bash
@@ -239,7 +239,7 @@ There are **no automated tests** in this repository. To validate changes:
 **Solution:**
 1. Run with `-n` flag first to see planned actions
 2. Ensure required input files exist (check `data/` directory)
-3. **Fix the environment naming issue**: The Snakefile incorrectly references `toxic_talk` but should use `rcl` (the environment defined in `environment.yml`). See the "Snakemake Pipeline" section above for the recommended fix.
+3. If encountering conda environment errors, see the environment naming bug and recommended fix in the "Snakemake Pipeline" section above
 4. Run individual scripts manually to debug
 
 ### Concurrent Chatbot Executions
