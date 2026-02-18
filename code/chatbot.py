@@ -356,7 +356,7 @@ class Run:
         for author_id, row in df.iterrows():
             author_id = str(author_id)
             # Support both new 'context_text' and legacy 'toxic_comments' field names
-            context_text_value = row.get('context_text', row.get('toxic_comments', ''))
+            context_text_value = row['context_text'] if 'context_text' in row else row.get('toxic_comments', '')
             self.participants[author_id] = User(user_name=row['author'],
                                                 user_id=author_id, 
                                                 subreddit=row['subreddit'], 
@@ -647,7 +647,7 @@ class Run:
             selected_platform, selected_model = random.choice(all_models)
             
             # Support both new 'context_text' and legacy 'toxic_comments' field names
-            context_text_value = row.get('context_text', row.get('toxic_comments', ''))
+            context_text_value = row['context_text'] if 'context_text' in row else row.get('toxic_comments', '')
             
             user = User(
                 user_name=row['author'],
@@ -821,7 +821,7 @@ class Run:
         try:
             return self.participants.loc[self.participants.author_id == user_id, 'messaging_strategy'].values[0]
         except KeyError:
-            raise Exception("Tried to find {user_id} in the participants file, but it wasn't there")
+            raise Exception(f"Tried to find {user_id} in the participants file, but it wasn't there")
 
 
     def get_context_text(self, user_id):
@@ -832,7 +832,7 @@ class Run:
             try:
                 return self.participants.loc[self.participants.author_id == user_id, 'toxic_comments'].values[0]
             except KeyError:
-                raise Exception("Tried to find {user_id} in the participants file, but it wasn't there")
+                raise Exception(f"Tried to find {user_id} in the participants file, but it wasn't there")
 
     def get_ai_reply(self, conversation, bot_instructions, gai_platform, gai_model):
         ## Check for maximum interactions
