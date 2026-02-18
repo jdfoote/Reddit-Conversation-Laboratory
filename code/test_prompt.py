@@ -14,6 +14,7 @@ import argparse
 import yaml
 import json
 import logging
+import random
 from datetime import datetime
 import gai_interface
 
@@ -101,6 +102,44 @@ def select_first_consented_message(config):
     messages = list(config['first_consented_message'].keys())
     selected_key = select_from_list(messages, "Select a first consented message:")
     return selected_key, config['first_consented_message'][selected_key]
+
+
+def random_gai_model(config):
+    """Randomly select a GAI model from the config."""
+    all_models = gai_interface.list_available_models(config)
+    
+    if not all_models:
+        logging.error("No GAI models found in config file")
+        exit(1)
+    
+    selected = random.choice(all_models)
+    logging.info(f"Randomly selected GAI model: {selected[0]} - {selected[1]}")
+    return selected
+
+
+def random_bot_prompt(config):
+    """Randomly select a bot prompt from the config."""
+    if 'gai_prompt' not in config or not config['gai_prompt']:
+        logging.error("No bot prompts found in config file")
+        exit(1)
+    
+    prompts = list(config['gai_prompt'].keys())
+    selected_key = random.choice(prompts)
+    logging.info(f"Randomly selected bot prompt: {selected_key}")
+    return selected_key, config['gai_prompt'][selected_key]
+
+
+def random_first_consented_message(config):
+    """Randomly select a first consented message from the config."""
+    if 'first_consented_message' not in config or not config['first_consented_message']:
+        logging.error("No first consented messages found in config file")
+        exit(1)
+    
+    messages = list(config['first_consented_message'].keys())
+    selected_key = random.choice(messages)
+    logging.info(f"Randomly selected first consented message: {selected_key}")
+    return selected_key, config['first_consented_message'][selected_key]
+
 
 
 def save_conversation(output_file, conversation_data):
@@ -249,6 +288,11 @@ def main():
         default='info',
         help='Logging level (default: info)'
     )
+    parser.add_argument(
+        '--interactive',
+        action='store_true',
+        help='Enable interactive selection of model, prompt, and message (default: random selection)'
+    )
     
     args = parser.parse_args()
     
@@ -262,17 +306,31 @@ def main():
     # Load configuration
     config = load_config(args.config)
     
-    # Step 1: Select GAI model
-    gai_platform, gai_model = select_gai_model(config)
-    print(f"\nSelected: {gai_platform} - {gai_model}")
-    
-    # Step 2: Select bot prompt
-    prompt_key, bot_prompt = select_bot_prompt(config)
-    print(f"\nSelected prompt: {prompt_key}")
-    
-    # Step 3: Select first consented message
-    first_message_key, first_message = select_first_consented_message(config)
-    print(f"\nSelected first message: {first_message_key}")
+    # Select GAI model, prompt, and first message (interactive or random)
+    if args.interactive:
+        print("\nInteractive mode: Please make your selections\n")
+        # Step 1: Select GAI model
+        gai_platform, gai_model = select_gai_model(config)
+        print(f"\nSelected: {gai_platform} - {gai_model}")
+        
+        # Step 2: Select bot prompt
+        prompt_key, bot_prompt = select_bot_prompt(config)
+        print(f"\nSelected prompt: {prompt_key}")
+        
+        # Step 3: Select first consented message
+        first_message_key, first_message = select_first_consented_message(config)
+        print(f"\nSelected first message: {first_message_key}")
+    else:
+        print("\nRandom selection mode\n")
+        # Random selection
+        gai_platform, gai_model = random_gai_model(config)
+        print(f"GAI model: {gai_platform} - {gai_model}")
+        
+        prompt_key, bot_prompt = random_bot_prompt(config)
+        print(f"Bot prompt: {prompt_key}")
+        
+        first_message_key, first_message = random_first_consented_message(config)
+        print(f"First message: {first_message_key}")
     
     # Format the prompt and first message (replace placeholders with generic values)
     # For testing purposes, we use placeholders
