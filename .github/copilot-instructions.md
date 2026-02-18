@@ -103,6 +103,8 @@ python fetch_comms/retrieve_latest_user_comments.py
 
 The Snakemake pipeline handles data augmentation and summarization:
 
+**Important:** The Snakefile references a conda environment named `toxic_talk`. This may be a legacy environment name or a separate environment for the pipeline rules. The main environment for running scripts manually is `rcl`.
+
 **Dry-run (see what would execute):**
 ```bash
 snakemake -n
@@ -224,7 +226,7 @@ There are **no automated tests** in this repository. To validate changes:
 **Solution:**
 1. Run with `-n` flag first to see planned actions
 2. Ensure required input files exist (check `data/` directory)
-3. Verify conda environment `toxic_talk` exists (some rules reference it)
+3. Note: Snakefile references a conda environment named `toxic_talk` (different from the main `rcl` environment). This may be a legacy reference that needs updating, or it may be a separate environment for the pipeline.
 4. Run individual scripts manually to debug
 
 ### Concurrent Chatbot Executions
