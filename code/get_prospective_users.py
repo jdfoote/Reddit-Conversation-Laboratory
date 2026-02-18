@@ -41,10 +41,17 @@ contacted = pd.read_csv(to_contact_file)
 out_file =  os.path.join(script_dir, config['tox_users_to_contact_file'])
 f = open(out_file, 'w')
 writer = csv.writer(f)
-writer.writerow(['author','subreddit', 'toxic_comments', 'timestamp', 'moderator', 'tox_score'])
+writer.writerow(['author','subreddit', 'context_text', 'timestamp', 'moderator', 'tox_score'])
 
 
-def get_toxic_comments(subreddit, max_comments = 20, limit = 100):
+def get_prospective_participants(subreddit, max_comments = 20, limit = 100):
+    """
+    Gets prospective participants from a subreddit based on removed comments.
+    This is the main function for identifying users to contact.
+    
+    For toxic comment studies: Uses Perspective API to score comments for toxicity.
+    For other studies: This function can be adapted to identify participants based on different criteria.
+    """
     comment_count = 0
     try:
         last_contacted = max(contacted.loc[(contacted.subreddit==subreddit) & (pd.notna(contacted.timestamp)), 'timestamp'])
@@ -87,6 +94,9 @@ def get_toxic_comments(subreddit, max_comments = 20, limit = 100):
         if comment_count == max_comments:
             break
         time.sleep(.01)
+
+# Backwards compatibility alias
+get_toxic_comments = get_prospective_participants
 
 
 def get_toxicity_scores(orig_text):
@@ -166,7 +176,7 @@ def get_users_by_keywords(subreddits, keywords, reddit, *kargs):
 
 def main():
     for s in subreddits:
-        get_toxic_comments(s, max_comments=80, limit=None)
+        get_prospective_participants(s, max_comments=80, limit=None)
     f.close()
     new_to_contact = pd.read_csv(out_file)
     combined_file = pd.concat([contacted, new_to_contact], ignore_index=True)

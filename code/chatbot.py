@@ -107,7 +107,7 @@ class User:
     condition: str
     messaging_strategy: str
     subreddit: str
-    toxic_comments: str
+    context_text: str
     gai_model: str
     gai_platform: str
     first_consented_msg: str
@@ -340,8 +340,11 @@ class Run:
     def load_participants(self):
         '''
         Loads the table of participants; a CSV file stored in `config['participants_file']`. Should have the following columns:
-        author(str), author_id(str), subreddit (str), toxic_comments (str), condition (str), messaging_strategy (str). Converts it to
-        a dictionary of User objects, indexed by author_id'''
+        author(str), author_id(str), subreddit (str), context_text (str), condition (str), messaging_strategy (str). Converts it to
+        a dictionary of User objects, indexed by author_id
+        
+        Note: For backwards compatibility, also accepts 'toxic_comments' as a column name (legacy field).
+        '''
      
         try:
             df = pd.read_csv(self.participants_file, index_col = 'author_id')
@@ -352,10 +355,12 @@ class Run:
         self.username_to_id_map = dict()
         for author_id, row in df.iterrows():
             author_id = str(author_id)
+            # Support both new 'context_text' and legacy 'toxic_comments' field names
+            context_text_value = row.get('context_text', row.get('toxic_comments', ''))
             self.participants[author_id] = User(user_name=row['author'],
                                                 user_id=author_id, 
                                                 subreddit=row['subreddit'], 
-                                                toxic_comments=row['toxic_comments'], 
+                                                context_text=context_text_value, 
                                                 condition=row['condition'], 
                                                 messaging_strategy=row['messaging_strategy'],
                                                 gai_model=row['gai_model'],
@@ -620,7 +625,7 @@ class Run:
 
 
     def contact_new(self, messaging_strategy = 'default', max_contacts = 2):
-        '''Randomly assigns users who have sent toxic comments to one of the conditions, and contacts them with the initial message.
+        '''Randomly assigns prospective participants to one of the conditions, and contacts them with the initial message.
         messaging_strategy can be one of [default, modmail, dm]. Default starts with a modmail message, and then
         switches to DMs if the user replies. Modmail keeps using modmail, and 'dm' starts with a DM.
         '''
@@ -641,6 +646,9 @@ class Run:
             # Randomly select a platform and model
             selected_platform, selected_model = random.choice(all_models)
             
+            # Support both new 'context_text' and legacy 'toxic_comments' field names
+            context_text_value = row.get('context_text', row.get('toxic_comments', ''))
+            
             user = User(
                 user_name=row['author'],
                 user_id=uuid.uuid4(),
@@ -648,7 +656,7 @@ class Run:
                 ## Should probably be smart about the different prompt and messaging strategy combinations
                 condition=random.choices(self.prompt_options + ['control'], weights = [1] * len(self.prompt_options) + [CONTROL_WEIGHT])[0],
                 messaging_strategy=messaging_strategy,
-                toxic_comments=row['toxic_comments'],
+                context_text=context_text_value,
                 subreddit=row['subreddit'],
                 gai_platform=selected_platform,
                 gai_model=selected_model,
@@ -673,7 +681,7 @@ class Run:
             with open(self.participants_file, 'w') as f:
                 writer = csv.writer(f)
                 writer.writerow(['author', 'author_id', 'condition', 'subreddit', 
-                                 'toxic_comments', 'messaging_strategy', 'gai_platform', 'gai_model', 'first_consented_msg','initial_message'])
+                                 'context_text', 'messaging_strategy', 'gai_platform', 'gai_model', 'first_consented_msg','initial_message'])
         
         with open(self.participants_file, 'a') as f:
             out = csv.writer(f)
@@ -681,7 +689,7 @@ class Run:
                             author.user_id,
                             author.condition,                                                                                     
                             author.subreddit,
-                            author.toxic_comments,
+                            author.context_text,
                             author.messaging_strategy,
                             author.gai_platform,
                             author.gai_model,
@@ -789,7 +797,7 @@ class Run:
         '''Sends a message to the user if they have consented to the study'''
         # If the user is in the default flow, then we send a DM. Otherwise, we send a reply to the user.
         first_consented_message = config['first_consented_message'][user.first_consented_msg]
-        message = first_consented_message.format(subreddit=user.subreddit, comment = user.toxic_comments)
+        message = first_consented_message.format(subreddit=user.subreddit, comment = user.context_text)
         if user.messaging_strategy == 'default':
             return self.send_dm(user=user, subject=self.get_subject(user.condition), body=message, message_type='first_consented_message')
         else:
@@ -816,11 +824,15 @@ class Run:
             raise Exception("Tried to find {user_id} in the participants file, but it wasn't there")
 
 
-    def get_toxic_comments(self, user_id):
+    def get_context_text(self, user_id):
+        """Get the context text for a user. For backwards compatibility, also checks for 'toxic_comments' field."""
         try:
-            return self.participants.loc[self.participants.author_id == user_id, 'toxic_comments'].values[0]
+            return self.participants.loc[self.participants.author_id == user_id, 'context_text'].values[0]
         except KeyError:
-            raise Exception("Tried to find {user_id} in the participants file, but it wasn't there")
+            try:
+                return self.participants.loc[self.participants.author_id == user_id, 'toxic_comments'].values[0]
+            except KeyError:
+                raise Exception("Tried to find {user_id} in the participants file, but it wasn't there")
 
     def get_ai_reply(self, conversation, bot_instructions, gai_platform, gai_model):
         ## Check for maximum interactions
@@ -893,10 +905,11 @@ class Run:
         self.reddit.subreddit(sr).modmail(id).archive()
 
 
-def add_to_contact(username, toxic_comment):
+def add_to_contact(username, context_text):
+    """Add a user to the contact list with their context text (e.g., comment content, post content, etc.)"""
     with open(os.path.join(script_dir, config['to_contact_file']), 'a') as f:
         out = csv.writer(f)
-        out.writerow([username, 'survey_invite_testing', toxic_comment])
+        out.writerow([username, 'survey_invite_testing', context_text])
 
 def user_is_missing(exception):
     for item in exception.items:

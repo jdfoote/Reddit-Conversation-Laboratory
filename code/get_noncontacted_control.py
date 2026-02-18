@@ -51,7 +51,7 @@ potential_controls.to_csv('../data/potential_controls.csv', index=False)
 
 # Match columns to the participants.csv file
 potential_controls['author'] = potential_controls['target_author']
-potential_controls['toxic_comments'] = potential_controls['target_body']
+potential_controls['context_text'] = potential_controls['target_body']
 potential_controls['author_id'] = [uuid.uuid4() for _ in range(300)]
 potential_controls['condition'] = 'uncontacted_control'
 potential_controls['messaging_strategy'] = np.nan
@@ -60,7 +60,7 @@ potential_controls['first_consented_msg'] = np.nan
 potential_controls['initial_message'] = np.nan
 
 # Reorder columns
-potential_controls = potential_controls[['author', 'author_id', 'condition', 'subreddit', 'toxic_comments', 'messaging_strategy', 'openai_model', 'first_consented_msg', 'initial_message']]
+potential_controls = potential_controls[['author', 'author_id', 'condition', 'subreddit', 'context_text', 'messaging_strategy', 'openai_model', 'first_consented_msg', 'initial_message']]
 
 participants = pd.read_csv('../data/participants.csv')
 participants_combined = pd.concat([participants, potential_controls], axis=0, ignore_index=True)
