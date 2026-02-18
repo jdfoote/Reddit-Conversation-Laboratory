@@ -107,12 +107,11 @@ class User:
     condition: str
     messaging_strategy: str
     subreddit: str
-    context_text: str
     gai_model: str
     gai_platform: str
     first_consented_msg: str
     initial_message: str
-    additional_context: dict = field(default_factory=dict)  # Dictionary to store any additional columns from CSV files (to_contact.csv or participants.csv)
+    additional_context: dict = field(default_factory=dict)  # Dictionary to store any additional columns from CSV files (to_contact.csv or participants.csv), including optional context_text/toxic_comments
 
 class Conversation:
     
@@ -360,10 +359,10 @@ class Run:
         messaging_strategy (str), gai_model(str), gai_platform(str), first_consented_msg(str), 
         initial_message(str)
         
-        Optional columns: context_text (str) or toxic_comments (str, legacy), plus any additional 
-        custom columns which will be stored in user.additional_context dictionary.
+        All other columns (including optional context_text or toxic_comments) will be stored 
+        in user.additional_context dictionary.
         
-        Note: For backwards compatibility, also accepts 'toxic_comments' as a column name (legacy field).
+        Note: For backwards compatibility, 'toxic_comments' is treated as an alias for 'context_text'.
         '''
      
         try:
@@ -371,28 +370,27 @@ class Run:
         except FileNotFoundError:
             df = pd.DataFrame()
 
-        # Define core columns that map to User attributes
+        # Define core columns that map to User attributes (excluding context_text)
         core_columns = {'author', 'subreddit', 'condition', 'messaging_strategy', 
-                       'gai_model', 'gai_platform', 'first_consented_msg', 'initial_message',
-                       'context_text', 'toxic_comments'}
+                       'gai_model', 'gai_platform', 'first_consented_msg', 'initial_message'}
 
         self.participants = dict()
         self.username_to_id_map = dict()
         for author_id, row in df.iterrows():
             author_id = str(author_id)
-            # Support both new 'context_text' and legacy 'toxic_comments' field names
-            context_text_value = row['context_text'] if 'context_text' in row else row.get('toxic_comments', '')
             
-            # Capture any additional columns not in the core set
+            # Capture all non-core columns as additional context
             additional_context = {}
             for col in df.columns:
                 if col not in core_columns:
+                    # For backwards compatibility: if toxic_comments exists but context_text doesn't, add both
+                    if col == 'toxic_comments' and 'context_text' not in df.columns:
+                        additional_context['context_text'] = row[col]
                     additional_context[col] = row[col]
             
             self.participants[author_id] = User(user_name=row['author'],
                                                 user_id=author_id, 
                                                 subreddit=row['subreddit'], 
-                                                context_text=context_text_value, 
                                                 condition=row['condition'], 
                                                 messaging_strategy=row['messaging_strategy'],
                                                 gai_model=row['gai_model'],
@@ -672,8 +670,8 @@ class Run:
         df = df[~df.author.isin(self.bad_accounts)]
         df = df.iloc[:max_contacts]
         
-        # Define core columns that are used directly in User object
-        core_columns = {'author', 'subreddit', 'context_text', 'toxic_comments'}
+        # Define core columns that are used directly in User object (excluding context_text)
+        core_columns = {'author', 'subreddit'}
         
         # Build list of all available models from config
         all_models = []
@@ -685,13 +683,13 @@ class Run:
             # Randomly select a platform and model
             selected_platform, selected_model = random.choice(all_models)
             
-            # Support both new 'context_text' and legacy 'toxic_comments' field names
-            context_text_value = row['context_text'] if 'context_text' in row else row.get('toxic_comments', '')
-            
-            # Capture any additional columns not in the core set
+            # Capture all non-core columns as additional context
             additional_context = {}
             for col in df.columns:
                 if col not in core_columns:
+                    # For backwards compatibility: if toxic_comments exists but context_text doesn't, add both
+                    if col == 'toxic_comments' and 'context_text' not in df.columns:
+                        additional_context['context_text'] = row[col]
                     additional_context[col] = row[col]
             
             user = User(
@@ -701,7 +699,6 @@ class Run:
                 ## Should probably be smart about the different prompt and messaging strategy combinations
                 condition=random.choices(self.prompt_options + ['control'], weights = [1] * len(self.prompt_options) + [CONTROL_WEIGHT])[0],
                 messaging_strategy=messaging_strategy,
-                context_text=context_text_value,
                 subreddit=row['subreddit'],
                 gai_platform=selected_platform,
                 gai_model=selected_model,
@@ -725,13 +722,12 @@ class Run:
         Handles dynamic columns from additional_context dictionary by writing them as separate columns.
         '''
         
-        # Prepare the participant data
+        # Prepare the participant data with core fields
         participant_data = {
             'author': author.user_name,
             'author_id': author.user_id,
             'condition': author.condition,
             'subreddit': author.subreddit,
-            'context_text': author.context_text,
             'messaging_strategy': author.messaging_strategy,
             'gai_platform': author.gai_platform,
             'gai_model': author.gai_model,
@@ -739,7 +735,7 @@ class Run:
             'initial_message': author.initial_message
         }
         
-        # Add any additional context fields
+        # Add any additional context fields (including optional context_text)
         if author.additional_context:
             participant_data.update(author.additional_context)
         
@@ -888,14 +884,15 @@ class Run:
         
         # Prepare formatting context with standard fields
         format_context = {
-            'subreddit': user.subreddit, 
-            'comment': user.context_text,
-            'context_text': user.context_text
+            'subreddit': user.subreddit
         }
         
-        # Add all additional context fields for template formatting
+        # Add all additional context fields for template formatting (including optional context_text)
         if user.additional_context:
             format_context.update(user.additional_context)
+            # For backwards compatibility, set 'comment' to 'context_text' if it exists
+            if 'context_text' in user.additional_context:
+                format_context['comment'] = user.additional_context['context_text']
         
         message = first_consented_message.format(**format_context)
         if user.messaging_strategy == 'default':
@@ -925,14 +922,14 @@ class Run:
 
 
     def get_context_text(self, user_id):
-        """Get the context text for a user. For backwards compatibility, also checks for 'toxic_comments' field."""
+        """Get the context text for a user from additional_context. 
+        For backwards compatibility, also checks for 'toxic_comments' field.
+        Returns empty string if neither field exists."""
         try:
-            return self.participants.loc[self.participants.author_id == user_id, 'context_text'].values[0]
+            user = self.participants[user_id]
+            return user.additional_context.get('context_text', user.additional_context.get('toxic_comments', ''))
         except KeyError:
-            try:
-                return self.participants.loc[self.participants.author_id == user_id, 'toxic_comments'].values[0]
-            except KeyError:
-                raise Exception(f"Tried to find {user_id} in the participants file, but it wasn't there")
+            raise Exception(f"Tried to find {user_id} in the participants file, but it wasn't there")
 
     def get_ai_reply(self, conversation, bot_instructions, gai_platform, gai_model):
         ## Check for maximum interactions
