@@ -16,6 +16,13 @@ import json
 import logging
 import random
 from datetime import datetime
+import sys
+import os
+
+# Add lib directory to path to import gai_interface
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../'))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../lib'))
+
 import gai_interface
 
 # Set up logging
@@ -202,7 +209,7 @@ def have_conversation(gai_platform, gai_model, bot_prompt, first_message,
     conversation_messages.append({"role": "assistant", "content": first_message})
     
     # Get max tokens for the model (use config value or default)
-    max_tokens = config.get('max_tokens', {}).get(gai_model, gai_interface.DEFAULT_MAX_TOKENS)
+    max_tokens = config.get('max_tokens', gai_interface.DEFAULT_MAX_TOKENS)
     max_interactions = config.get('max_interactions', 50)
     
     interaction_count = 0
@@ -267,19 +274,24 @@ def have_conversation(gai_platform, gai_model, bot_prompt, first_message,
 
 def main():
     """Main entry point for the test prompt utility."""
+    # Calculate default config path relative to script location
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    default_config_path = os.path.join(script_dir, '../../config.yaml')
+    default_output_path = os.path.join(script_dir, 'test_conversations.txt')
+    
     parser = argparse.ArgumentParser(
         description='Interactive utility for testing bot prompts and conversations',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
         '--config',
-        default='config.yaml',
-        help='Path to configuration YAML file (default: config.yaml)'
+        default=default_config_path,
+        help=f'Path to configuration YAML file (default: {default_config_path})'
     )
     parser.add_argument(
         '--output',
-        default='test_conversations.txt',
-        help='Path to output file for saving conversations (default: test_conversations.txt)'
+        default=default_output_path,
+        help=f'Path to output file for saving conversations (default: {default_output_path})'
     )
     parser.add_argument(
         '--log',

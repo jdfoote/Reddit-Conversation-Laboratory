@@ -12,7 +12,7 @@ from dataclasses import dataclass
 import argparse
 import json
 import auth
-import gai_interface
+from lib import gai_interface
 
 # Open config file
 import yaml

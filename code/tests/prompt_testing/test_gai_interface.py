@@ -16,8 +16,9 @@ from unittest.mock import Mock, patch, MagicMock
 import sys
 import os
 
-# Add the code directory to the path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add lib directory to path to import gai_interface
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../'))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../lib'))
 
 import gai_interface
 

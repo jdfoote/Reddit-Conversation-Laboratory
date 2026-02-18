@@ -17,7 +17,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/  # Commented out - we need code/lib/ for shared libraries
 lib64/
 parts/
 sdist/
