@@ -106,17 +106,17 @@ The Snakemake pipeline handles data augmentation and summarization:
 **Important Environment Note:** 
 - The `environment.yml` defines a conda environment named `rcl`
 - The `Snakefile` rules reference a conda environment named `toxic_talk`
-- This is an inconsistency in the repository configuration
+- This appears to be a legacy naming issue that should be corrected
 
-**To run Snakemake successfully, you have two options:**
-1. **Update the Snakefile** to use `rcl` instead of `toxic_talk`:
-   ```bash
-   sed -i 's/conda: "toxic_talk"/conda: "rcl"/g' Snakefile
-   ```
-2. **Create an alias** for the environment:
-   ```bash
-   conda create --name toxic_talk --clone rcl
-   ```
+**Recommended fix** (Update Snakefile to use the correct environment name):
+```bash
+sed -i 's/conda: "toxic_talk"/conda: "rcl"/g' Snakefile
+```
+
+**Alternative workaround** (if you cannot modify Snakefile):
+```bash
+conda create --name toxic_talk --clone rcl
+```
 
 **Dry-run (see what would execute):**
 ```bash
@@ -239,7 +239,7 @@ There are **no automated tests** in this repository. To validate changes:
 **Solution:**
 1. Run with `-n` flag first to see planned actions
 2. Ensure required input files exist (check `data/` directory)
-3. **Fix the environment naming inconsistency**: The Snakefile references `toxic_talk` but `environment.yml` defines `rcl`. See the "Snakemake Pipeline" section above for resolution steps.
+3. **Fix the environment naming issue**: The Snakefile incorrectly references `toxic_talk` but should use `rcl` (the environment defined in `environment.yml`). See the "Snakemake Pipeline" section above for the recommended fix.
 4. Run individual scripts manually to debug
 
 ### Concurrent Chatbot Executions
