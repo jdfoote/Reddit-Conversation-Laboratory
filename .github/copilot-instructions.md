@@ -63,8 +63,13 @@ This repository contains the **Reddit Conversation Laboratory (RCL)**, a Python-
    cp .env.example .env
    # Edit .env with real credentials
    ```
-   - Reddit API credentials required: `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USERNAME`, `REDDIT_PASSWORD`, `REDDIT_USER_AGENT`
-   - Optional: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `PERSPECTIVE_API_KEY`
+   - **Reddit API credentials** (required for all Reddit interactions):
+     - `REDDIT_CLIENT_ID` and `REDDIT_CLIENT_SECRET`: From your Reddit app
+     - `REDDIT_USERNAME` and `REDDIT_PASSWORD`: Your Reddit account credentials
+     - `REDDIT_USER_AGENT`: Custom identifier (format: `platform:app_id:version (by /u/username)`)
+   - Optional: `OPENAI_API_KEY` (for OpenAI chatbot responses)
+   - Optional: `ANTHROPIC_API_KEY` (for Anthropic/Claude chatbot responses)
+   - Optional: `PERSPECTIVE_API_KEY` (for toxicity scoring in augmentation scripts)
    - The `.env` file is gitignored to prevent credential leaks
 
 ## Running the Software
@@ -168,6 +173,8 @@ The repository includes `crontab.example` showing recommended scheduling:
 **Preventing concurrent executions:**
 Use `flock` to prevent overlapping chatbot instances:
 ```bash
+# Note: Ensure conda environment is activated in your shell profile, 
+# or add 'conda activate rcl &&' before the python command
 * * * * * flock -n /tmp/chatbot.lock -c "cd /path/to/code && python chatbot.py" >> logs/chatbot.log 2>&1
 ```
 
@@ -310,7 +317,7 @@ snakemake -j 4
 
 **Validate configuration:**
 ```bash
-python -c "import yaml; print(yaml.safe_load(open('code/config.yaml')))"
+python -c "import yaml; f = open('code/config.yaml'); print(yaml.safe_load(f)); f.close()"
 ```
 
 **Check what Snakemake would do:**
