@@ -720,7 +720,7 @@ class Run:
 
 
     def send_new_message(self, user):
-        '''Sends the initial message to users who have sent toxic comments. Returns True if the message was sent successfully, or returns an error'''
+        '''Sends the initial message to prospective participants. Returns True if the message was sent successfully, or returns an error'''
         subject = self.get_subject(user.condition)
         message = self.get_condition_message(user)
 

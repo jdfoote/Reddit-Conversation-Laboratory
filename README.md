@@ -6,6 +6,16 @@ Reddit Conversation Laboratory is a software toolkit and pipeline for conducting
 
 In addition to conducting experiments and storing conversations, the software can also record participant behavior before and after conversations. The toolkit contains scripts to fetch Reddit comments, prepare conversation-level data, augment comments with moderation and suspension signals, and generate summarized outputs for downstream analysis.
 
+## Universal Design
+
+The project is designed to be adaptable for various research studies on Reddit:
+
+- **Context-agnostic participant data**: Participant information is stored with a generic `context_text` field that can hold any relevant content (comment text, post content, user activity, etc.) rather than being tied to a specific study type.
+- **Configurable participant identification**: The default implementation in `get_prospective_users.py` identifies participants from moderation logs and toxicity scores, but this can be customized for other criteria (e.g., keyword matching, post topics, user activity patterns).
+- **Flexible messaging and prompts**: All chatbot messages and AI prompts are configurable via YAML files, allowing you to adapt the system for different research questions and intervention strategies.
+
+*Note: Some auxiliary scripts still contain toxicity-specific logic (e.g., Perspective API scoring). These can serve as examples for implementing your own participant identification criteria.*
+
 ## Quick overview
 - Chatbot and conversation software: [code/chatbot.py](code/chatbot.py) contains code to set-up and run the chatbot.
 - Fetching / collection: [code/fetch_comms/](code/fetch_comms/) and [code/get_convos.py](code/get_convos.py).
@@ -86,12 +96,20 @@ The repository uses a small set of YAML configuration files (located in `code/`)
 
 - [code/example_config.yaml](code/example_config.yaml) - a trimmed example of the same keys with shortened messages. Use this as a starting point for custom configs.
 
+### Data Files and CSV Structure
+
+The project uses several CSV files to manage participants and conversations:
+
+- **participants.csv** - Contains participant information with columns: `author`, `author_id`, `condition`, `subreddit`, `context_text`, `messaging_strategy`, `gai_platform`, `gai_model`, `first_consented_msg`, `initial_message`. The `context_text` field stores relevant content for each participant (e.g., comment text, post content, etc.). *Note: For backwards compatibility, the legacy field name `toxic_comments` is also supported.*
+- **to_contact.csv** - List of prospective participants to contact, with columns: `author`, `subreddit`, `context_text` (or legacy `toxic_comments`), `timestamp`, `moderator`, `tox_score`.
+- **conversations.csv** - Record of all conversation messages exchanged with participants.
+
 ## Scheduling / Automation
 
 The repository includes an example crontab file ([crontab.example](crontab.example)) that demonstrates how to schedule the RCL scripts to run automatically. The recommended schedule is:
 
 - **Chatbot** ([code/chatbot.py](code/chatbot.py)): Every minute - checks for new messages and responds to conversations
-- **Participant identification / modlog collection** ([code/get_prospective_users.py](code/get_prospective_users.py)): Twice per day - scans subreddit mod logs for removed toxic comments
+- **Participant identification / modlog collection** ([code/get_prospective_users.py](code/get_prospective_users.py)): Twice per day - scans subreddit mod logs to identify prospective participants (default implementation looks for removed comments and scores them for toxicity, but can be customized for other use cases)
 - **Participant data collection** ([code/fetch_comms/retrieve_latest_user_comments.py](code/fetch_comms/retrieve_latest_user_comments.py)): Once per day - fetches recent comments and suspension status
 
 ### Preventing Concurrent Executions
@@ -119,10 +137,10 @@ Top-level scripts in `code/`:
 
 - [code/chatbot.py](code/chatbot.py) - Main chatbot controller: reads conversations, inbox/modmail, decides whether to reply, and sends messages via PRAW/OpenAI; contains conversation and run logic.
 - [code/get_convos.py](code/get_convos.py) - Aggregate and clean conversation records into [data/filtered_convos.csv](data/filtered_convos.csv) (groups messages by user, filters by AI replies and test subreddits).
-- [code/get_toxic_moderated_comments.py](code/get_toxic_moderated_comments.py) - Scans subreddit mod logs for removed comments, scores them with Perspective API, records toxic removed comments or comments containing certain keywords for contacting.
+- [code/get_toxic_moderated_comments.py](code/get_toxic_moderated_comments.py) - **(Toxicity-specific)** Scans subreddit mod logs for removed comments, scores them with Perspective API, records toxic removed comments or comments containing certain keywords for contacting. Can be adapted for other participant identification criteria.
 - [code/fetch_comms/retrieve_latest_user_comments.py](code/fetch_comms/retrieve_latest_user_comments.py) - Fetches recent comments for users (uses PRAW), writes [data/participant_comments.csv](data/participant_comments.csv) and suspended status.
 - [code/invite_mods.py](code/invite_mods.py) - Script to contact subreddit moderators (used to recruit subreddits for the study).
-- [code/get_noncontacted_control.py](code/get_noncontacted_control.py) - Builds an uncontacted control sample from moderation logs and appends matched controls to [data/participants.csv](data/participants.csv).
+- [code/get_noncontacted_control.py](code/get_noncontacted_control.py) - Builds an uncontacted control sample from moderation logs and appends matched controls to [data/participants.csv](data/participants.csv). Can be adapted for different control group selection criteria.
 
 Augmentation scripts in `code/augment_data/`:
 
