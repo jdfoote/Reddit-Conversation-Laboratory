@@ -20,10 +20,26 @@ The `test_prompt.py` utility allows researchers to test different GAI models, bo
 
 ## Usage
 
-Basic usage with default config and output file:
+### Random Selection Mode (Default)
+
+By default, the utility randomly selects the GAI model, bot prompt, and first message:
 ```bash
 python test_prompt.py
 ```
+
+This is useful for:
+- Automated testing with varied configurations
+- Quick testing without manual intervention
+- Running multiple test conversations with different settings
+
+### Interactive Selection Mode
+
+Use the `--interactive` flag to manually select each configuration:
+```bash
+python test_prompt.py --interactive
+```
+
+### Additional Options
 
 Specify a custom config file and output file:
 ```bash
@@ -35,9 +51,27 @@ Enable debug logging:
 python test_prompt.py --log debug
 ```
 
-## Interactive Flow
+Combine options:
+```bash
+python test_prompt.py --interactive --config my_config.yaml --output test.txt --log debug
+```
 
-When you run the utility, it will:
+## Selection Modes
+
+### Random Selection (Default)
+
+When you run the utility without the `--interactive` flag:
+
+1. **Random GAI model** - Automatically selects a model from the config
+2. **Random bot prompt** - Automatically selects a prompt from the config
+3. **Random first consented message** - Automatically selects an opening message
+4. **Have a conversation** - Chat interactively with the bot using the random configuration
+
+The selected configuration is displayed and saved to the output file.
+
+### Interactive Selection
+
+When you run the utility with the `--interactive` flag:
 
 1. **Select a GAI model** - Choose from a numbered list of available models (e.g., OpenAI GPT-4, Claude)
 2. **Select a bot prompt** - Choose from a numbered list of system prompts that define the bot's behavior
