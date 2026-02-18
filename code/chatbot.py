@@ -11,7 +11,7 @@ from openai import BadRequestError
 from anthropic import Anthropic
 import uuid
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import argparse
 import json
 import auth
@@ -112,12 +112,7 @@ class User:
     gai_platform: str
     first_consented_msg: str
     initial_message: str
-    additional_context: dict = None  # Dictionary to store any additional columns from to_contact.csv
-    
-    def __post_init__(self):
-        """Initialize additional_context as empty dict if None"""
-        if self.additional_context is None:
-            self.additional_context = {}
+    additional_context: dict = field(default_factory=dict)  # Dictionary to store any additional columns from CSV files (to_contact.csv or participants.csv)
 
 class Conversation:
     
@@ -755,25 +750,35 @@ class Run:
             # Create new file with header
             new_participant.to_csv(self.participants_file, index=False)
         else:
-            # Append to existing file
-            # Read existing to check if we need to add new columns
-            existing = pd.read_csv(self.participants_file)
+            # Append to existing file - only read header to determine columns
+            existing_cols = pd.read_csv(self.participants_file, nrows=0).columns.tolist()
             
-            # Ensure all columns from new participant exist in the file
+            # Determine union of all columns
+            all_cols = list(existing_cols)
             for col in new_participant.columns:
-                if col not in existing.columns:
-                    existing[col] = None
+                if col not in all_cols:
+                    all_cols.append(col)
             
-            # Ensure all columns from existing file exist in new participant
-            for col in existing.columns:
+            # Ensure new participant has all columns (fill missing with None)
+            for col in all_cols:
                 if col not in new_participant.columns:
                     new_participant[col] = None
             
-            # Reorder columns to match existing file
-            new_participant = new_participant[existing.columns]
+            # Reorder to match column order
+            new_participant = new_participant[all_cols]
             
-            # Append the new participant
-            new_participant.to_csv(self.participants_file, mode='a', header=False, index=False)
+            # If we added new columns, rewrite entire file
+            if len(all_cols) > len(existing_cols):
+                existing = pd.read_csv(self.participants_file)
+                for col in all_cols:
+                    if col not in existing.columns:
+                        existing[col] = None
+                existing = existing[all_cols]
+                existing = pd.concat([existing, new_participant], ignore_index=True)
+                existing.to_csv(self.participants_file, index=False)
+            else:
+                # No new columns, just append
+                new_participant.to_csv(self.participants_file, mode='a', header=False, index=False)
         
         self.participants[author.user_id] = author
         self.username_to_id_map[author.user_name] = author.user_id
