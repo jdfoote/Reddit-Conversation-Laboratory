@@ -100,9 +100,28 @@ The repository uses a small set of YAML configuration files (located in `code/`)
 
 The project uses several CSV files to manage participants and conversations:
 
-- **participants.csv** - Contains participant information with columns: `author`, `author_id`, `condition`, `subreddit`, `context_text`, `messaging_strategy`, `gai_platform`, `gai_model`, `first_consented_msg`, `initial_message`. The `context_text` field stores relevant content for each participant (e.g., comment text, post content, etc.). *Note: For backwards compatibility, the legacy field name `toxic_comments` is also supported.*
-- **to_contact.csv** - List of prospective participants to contact, with columns: `author`, `subreddit`, `context_text` (or legacy `toxic_comments`), `timestamp`, `moderator`, `tox_score`.
+- **participants.csv** - Contains participant information with required columns: `author`, `author_id`, `condition`, `subreddit`, `context_text`, `messaging_strategy`, `gai_platform`, `gai_model`, `first_consented_msg`, `initial_message`. The `context_text` field stores relevant content for each participant (e.g., comment text, post content, etc.). *Note: For backwards compatibility, the legacy field name `toxic_comments` is also supported.*
+  
+  **Additional Custom Columns**: You can add any number of custom columns to this file. All additional columns will be stored in the `User.additional_context` dictionary and can be accessed in message templates.
+
+- **to_contact.csv** - List of prospective participants to contact, with required columns: `author`, `subreddit`. Optional standard columns include `context_text` (or legacy `toxic_comments`), `timestamp`, `moderator`, `tox_score`.
+  
+  **Additional Custom Columns**: You can add any number of custom columns to this file. All columns beyond the core set will be automatically captured and stored in `User.additional_context`, allowing you to track custom metadata about each prospective participant (e.g., `post_karma`, `account_age`, `sentiment_score`, `topic_category`, etc.).
+
 - **conversations.csv** - Record of all conversation messages exchanged with participants.
+
+#### Using Custom Fields in Message Templates
+
+Any custom fields you add to `to_contact.csv` or `participants.csv` can be used in your message templates by including them in curly braces:
+
+```yaml
+first_consented_message:
+  message_1: |
+    Thank you for agreeing to chat. I noticed your post in r/{subreddit} where you mentioned {topic}.
+    Your account karma is {post_karma} and you've been active for {account_age} days.
+```
+
+If your `to_contact.csv` includes columns like `topic`, `post_karma`, and `account_age`, these will automatically be available for use in any message template (`initial_message`, `first_consented_message`, etc.).
 
 ## Scheduling / Automation
 

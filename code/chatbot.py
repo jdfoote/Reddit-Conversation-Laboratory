@@ -112,6 +112,12 @@ class User:
     gai_platform: str
     first_consented_msg: str
     initial_message: str
+    additional_context: dict = None  # Dictionary to store any additional columns from to_contact.csv
+    
+    def __post_init__(self):
+        """Initialize additional_context as empty dict if None"""
+        if self.additional_context is None:
+            self.additional_context = {}
 
 class Conversation:
     
@@ -269,8 +275,22 @@ class Run:
         return "Some recent toxic messages"       
 
     def get_condition_message(self, user):
-        # TODO: Determine if we need different messages for different conditions or subreddits
-        return config['initial_message'][user.initial_message].format(username=user.user_name, subreddit=user.subreddit)
+        '''Get the initial message for a user, formatted with user context.
+        
+        The message template can use {username}, {subreddit}, and any fields from 
+        user.additional_context by using {fieldname} in the template.
+        '''
+        # Prepare formatting context with standard fields
+        format_context = {
+            'username': user.user_name,
+            'subreddit': user.subreddit
+        }
+        
+        # Add all additional context fields for template formatting
+        if user.additional_context:
+            format_context.update(user.additional_context)
+        
+        return config['initial_message'][user.initial_message].format(**format_context)
     
     def get_subred_rules(self, subred):
         rules = list()
@@ -339,9 +359,14 @@ class Run:
 
     def load_participants(self):
         '''
-        Loads the table of participants; a CSV file stored in `config['participants_file']`. Should have the following columns:
-        author(str), author_id(str), subreddit (str), context_text (str), condition (str), messaging_strategy (str). Converts it to
-        a dictionary of User objects, indexed by author_id
+        Loads the table of participants; a CSV file stored in `config['participants_file']`. 
+        
+        Required columns: author(str), author_id(str), subreddit (str), condition (str), 
+        messaging_strategy (str), gai_model(str), gai_platform(str), first_consented_msg(str), 
+        initial_message(str)
+        
+        Optional columns: context_text (str) or toxic_comments (str, legacy), plus any additional 
+        custom columns which will be stored in user.additional_context dictionary.
         
         Note: For backwards compatibility, also accepts 'toxic_comments' as a column name (legacy field).
         '''
@@ -351,12 +376,24 @@ class Run:
         except FileNotFoundError:
             df = pd.DataFrame()
 
+        # Define core columns that map to User attributes
+        core_columns = {'author', 'subreddit', 'condition', 'messaging_strategy', 
+                       'gai_model', 'gai_platform', 'first_consented_msg', 'initial_message',
+                       'context_text', 'toxic_comments'}
+
         self.participants = dict()
         self.username_to_id_map = dict()
         for author_id, row in df.iterrows():
             author_id = str(author_id)
             # Support both new 'context_text' and legacy 'toxic_comments' field names
             context_text_value = row['context_text'] if 'context_text' in row else row.get('toxic_comments', '')
+            
+            # Capture any additional columns not in the core set
+            additional_context = {}
+            for col in df.columns:
+                if col not in core_columns:
+                    additional_context[col] = row[col]
+            
             self.participants[author_id] = User(user_name=row['author'],
                                                 user_id=author_id, 
                                                 subreddit=row['subreddit'], 
@@ -366,7 +403,8 @@ class Run:
                                                 gai_model=row['gai_model'],
                                                 gai_platform=row['gai_platform'],
                                                 first_consented_msg=row['first_consented_msg'],
-                                                initial_message=row['initial_message']
+                                                initial_message=row['initial_message'],
+                                                additional_context=additional_context
                                                 )
             self.username_to_id_map[row['author']] = author_id
         
@@ -628,6 +666,9 @@ class Run:
         '''Randomly assigns prospective participants to one of the conditions, and contacts them with the initial message.
         messaging_strategy can be one of [default, modmail, dm]. Default starts with a modmail message, and then
         switches to DMs if the user replies. Modmail keeps using modmail, and 'dm' starts with a DM.
+        
+        The to_contact.csv file can have any number of columns beyond the required 'author' and 'subreddit'.
+        All additional columns will be stored in user.additional_context and can be accessed in message templates.
         '''
         df = pd.read_csv(self.to_contact_file)
         df = df.drop_duplicates('author')
@@ -635,6 +676,9 @@ class Run:
         df = df[~df.author.isin(self.username_to_id_map.keys())]
         df = df[~df.author.isin(self.bad_accounts)]
         df = df.iloc[:max_contacts]
+        
+        # Define core columns that are used directly in User object
+        core_columns = {'author', 'subreddit', 'context_text', 'toxic_comments'}
         
         # Build list of all available models from config
         all_models = []
@@ -649,6 +693,12 @@ class Run:
             # Support both new 'context_text' and legacy 'toxic_comments' field names
             context_text_value = row['context_text'] if 'context_text' in row else row.get('toxic_comments', '')
             
+            # Capture any additional columns not in the core set
+            additional_context = {}
+            for col in df.columns:
+                if col not in core_columns:
+                    additional_context[col] = row[col]
+            
             user = User(
                 user_name=row['author'],
                 user_id=uuid.uuid4(),
@@ -662,7 +712,8 @@ class Run:
                 gai_model=selected_model,
                 # TODO put this logic somewhere else
                 first_consented_msg=random.choice(list(config['first_consented_message'].keys())),
-                initial_message=random.choice(self.initial_message_types)
+                initial_message=random.choice(self.initial_message_types),
+                additional_context=additional_context
             )
             logging.info(f"Sending initial message to {user.user_name}")
             # For now, sending messages to control
@@ -674,28 +725,56 @@ class Run:
                 self.add_participant(user)
     
     def add_participant(self, author):
-        '''Writes to the file and also updates self.participants and self.username_to_id_map'''
+        '''Writes to the file and also updates self.participants and self.username_to_id_map.
+        
+        Handles dynamic columns from additional_context dictionary by writing them as separate columns.
+        '''
+        
+        # Prepare the participant data
+        participant_data = {
+            'author': author.user_name,
+            'author_id': author.user_id,
+            'condition': author.condition,
+            'subreddit': author.subreddit,
+            'context_text': author.context_text,
+            'messaging_strategy': author.messaging_strategy,
+            'gai_platform': author.gai_platform,
+            'gai_model': author.gai_model,
+            'first_consented_msg': author.first_consented_msg,
+            'initial_message': author.initial_message
+        }
+        
+        # Add any additional context fields
+        if author.additional_context:
+            participant_data.update(author.additional_context)
+        
+        # Convert to DataFrame for easier CSV handling
+        new_participant = pd.DataFrame([participant_data])
         
         if not os.path.isfile(self.participants_file):
-            # Open the CSV file in write mode and write the header row
-            with open(self.participants_file, 'w') as f:
-                writer = csv.writer(f)
-                writer.writerow(['author', 'author_id', 'condition', 'subreddit', 
-                                 'context_text', 'messaging_strategy', 'gai_platform', 'gai_model', 'first_consented_msg','initial_message'])
+            # Create new file with header
+            new_participant.to_csv(self.participants_file, index=False)
+        else:
+            # Append to existing file
+            # Read existing to check if we need to add new columns
+            existing = pd.read_csv(self.participants_file)
+            
+            # Ensure all columns from new participant exist in the file
+            for col in new_participant.columns:
+                if col not in existing.columns:
+                    existing[col] = None
+            
+            # Ensure all columns from existing file exist in new participant
+            for col in existing.columns:
+                if col not in new_participant.columns:
+                    new_participant[col] = None
+            
+            # Reorder columns to match existing file
+            new_participant = new_participant[existing.columns]
+            
+            # Append the new participant
+            new_participant.to_csv(self.participants_file, mode='a', header=False, index=False)
         
-        with open(self.participants_file, 'a') as f:
-            out = csv.writer(f)
-            out.writerow([author.user_name,
-                            author.user_id,
-                            author.condition,                                                                                     
-                            author.subreddit,
-                            author.context_text,
-                            author.messaging_strategy,
-                            author.gai_platform,
-                            author.gai_model,
-                            author.first_consented_msg,
-                            author.initial_message
-                            ])
         self.participants[author.user_id] = author
         self.username_to_id_map[author.user_name] = author.user_id
                 
@@ -794,10 +873,26 @@ class Run:
             self.send_first_consented_message(user, conversation)
 
     def send_first_consented_message(self, user, conversation):
-        '''Sends a message to the user if they have consented to the study'''
+        '''Sends a message to the user if they have consented to the study.
+        
+        The message template can use {subreddit}, {comment} (or {context_text}), and any fields 
+        from user.additional_context by using {fieldname} in the template.
+        '''
         # If the user is in the default flow, then we send a DM. Otherwise, we send a reply to the user.
         first_consented_message = config['first_consented_message'][user.first_consented_msg]
-        message = first_consented_message.format(subreddit=user.subreddit, comment = user.context_text)
+        
+        # Prepare formatting context with standard fields
+        format_context = {
+            'subreddit': user.subreddit, 
+            'comment': user.context_text,
+            'context_text': user.context_text
+        }
+        
+        # Add all additional context fields for template formatting
+        if user.additional_context:
+            format_context.update(user.additional_context)
+        
+        message = first_consented_message.format(**format_context)
         if user.messaging_strategy == 'default':
             return self.send_dm(user=user, subject=self.get_subject(user.condition), body=message, message_type='first_consented_message')
         else:
