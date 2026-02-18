@@ -71,7 +71,7 @@ The repository uses a small set of YAML configuration files (located in `code/`)
 The repository includes an example crontab file ([crontab.example](crontab.example)) that demonstrates how to schedule the RCL scripts to run automatically. The recommended schedule is:
 
 - **Chatbot** ([code/chatbot.py](code/chatbot.py)): Every minute - checks for new messages and responds to conversations
-- **Participant identification / modlog collection** ([code/get_toxic_moderated_comments.py](code/get_toxic_moderated_comments.py)): Twice per day - scans subreddit mod logs for toxic comments
+- **Participant identification / modlog collection** ([code/get_prospective_users.py](code/get_prospective_users.py)): Twice per day - scans subreddit mod logs for removed toxic comments
 - **Participant data collection** ([code/fetch_comms/retrieve_latest_user_comments.py](code/fetch_comms/retrieve_latest_user_comments.py)): Once per day - fetches recent comments and suspension status
 
 ### Preventing Concurrent Executions

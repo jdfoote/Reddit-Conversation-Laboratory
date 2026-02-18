@@ -21,20 +21,20 @@
 # Run chatbot every minute with file locking to prevent concurrent executions
 # The chatbot checks for new messages and responds to conversations
 # Using flock ensures only one instance runs at a time, even if execution takes >1 minute
-* * * * * flock -n /tmp/chatbot.lock -c "cd /path/to/Reddit-Conversation-Laboratory/code && /path/to/conda/envs/toxic_talk/bin/python chatbot.py" >> /path/to/Reddit-Conversation-Laboratory/logs/chatbot.log 2>&1
+* * * * * flock -n /tmp/chatbot.lock -c "cd /path/to/Reddit-Conversation-Laboratory/code && /path/to/conda/envs/rcl/bin/python chatbot.py" >> /path/to/Reddit-Conversation-Laboratory/logs/chatbot.log 2>&1
 
 # Run participant identification and modlog collection twice per day (at 6 AM and 6 PM)
 # This script scans subreddit mod logs for removed toxic comments and identifies potential participants
-0 6,18 * * * cd /path/to/Reddit-Conversation-Laboratory/code && /path/to/conda/envs/toxic_talk/bin/python get_toxic_moderated_comments.py >> /path/to/Reddit-Conversation-Laboratory/logs/modlog.log 2>&1
+0 6,18 * * * cd /path/to/Reddit-Conversation-Laboratory/code && /path/to/conda/envs/rcl/bin/python get_prospective_users.py >> /path/to/Reddit-Conversation-Laboratory/logs/modlog.log 2>&1
 
 # Run participant data collection once per day (at 2 AM)
 # This script fetches recent comments and suspension status for participants
-0 2 * * * cd /path/to/Reddit-Conversation-Laboratory/code && /path/to/conda/envs/toxic_talk/bin/python fetch_comms/retrieve_latest_user_comments.py >> /path/to/Reddit-Conversation-Laboratory/logs/participant_comments.log 2>&1
+0 2 * * * cd /path/to/Reddit-Conversation-Laboratory/code && /path/to/conda/envs/rcl/bin/python fetch_comms/retrieve_latest_user_comments.py >> /path/to/Reddit-Conversation-Laboratory/logs/participant_comments.log 2>&1
 
 # === NOTES ===
 # - All times are in the server's local timezone
 # - Log files help debug issues; create the logs/ directory if it doesn't exist
-# - The conda environment 'toxic_talk' must be created first (see README.md)
+# - The conda environment 'rcl' must be created first (see README.md)
 # - Ensure all necessary API credentials are configured in .env or auth.py
 # - You may want to adjust logging levels by adding command-line arguments (e.g., --loglevel info)
 # - The flock command with -n flag (non-blocking) prevents multiple chatbot instances from running
@@ -42,4 +42,4 @@
 #
 # === ALTERNATIVE USING CONDA ACTIVATE ===
 # If you prefer to use 'conda activate', you can structure commands like:
-# * * * * * flock -n /tmp/chatbot.lock bash -c "cd /path/to/Reddit-Conversation-Laboratory/code && source /path/to/conda/etc/profile.d/conda.sh && conda activate toxic_talk && python chatbot.py >> /path/to/Reddit-Conversation-Laboratory/logs/chatbot.log 2>&1"
+# * * * * * flock -n /tmp/chatbot.lock bash -c "cd /path/to/Reddit-Conversation-Laboratory/code && source /path/to/conda/etc/profile.d/conda.sh && conda activate rcl && python chatbot.py >> /path/to/Reddit-Conversation-Laboratory/logs/chatbot.log 2>&1"
