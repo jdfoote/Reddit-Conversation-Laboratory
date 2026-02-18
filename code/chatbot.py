@@ -263,6 +263,28 @@ class Run:
                 self.bad_accounts = json.load(f)
         except FileNotFoundError:
             self.bad_accounts = []
+    
+    def _process_custom_columns(self, row, df_columns, core_columns):
+        """Helper method to process custom columns with backwards compatibility for toxic_comments.
+        
+        Args:
+            row: DataFrame row containing the data
+            df_columns: List of all columns in the DataFrame
+            core_columns: Set of core column names to exclude from additional_context
+            
+        Returns:
+            Dictionary of additional_context with all non-core columns
+        """
+        additional_context = {}
+        for col in df_columns:
+            if col not in core_columns:
+                additional_context[col] = row[col]
+        
+        # For backwards compatibility: if toxic_comments exists but context_text doesn't, also add as context_text
+        if 'toxic_comments' in additional_context and 'context_text' not in df_columns:
+            additional_context['context_text'] = additional_context['toxic_comments']
+        
+        return additional_context
 
     def get_subject(self, condition):
         return "Chat with our chatbot about how people behave online"
@@ -379,14 +401,8 @@ class Run:
         for author_id, row in df.iterrows():
             author_id = str(author_id)
             
-            # Capture all non-core columns as additional context
-            additional_context = {}
-            for col in df.columns:
-                if col not in core_columns:
-                    # For backwards compatibility: if toxic_comments exists but context_text doesn't, add both
-                    if col == 'toxic_comments' and 'context_text' not in df.columns:
-                        additional_context['context_text'] = row[col]
-                    additional_context[col] = row[col]
+            # Use helper method to process custom columns with backwards compatibility
+            additional_context = self._process_custom_columns(row, df.columns, core_columns)
             
             self.participants[author_id] = User(user_name=row['author'],
                                                 user_id=author_id, 
@@ -683,14 +699,8 @@ class Run:
             # Randomly select a platform and model
             selected_platform, selected_model = random.choice(all_models)
             
-            # Capture all non-core columns as additional context
-            additional_context = {}
-            for col in df.columns:
-                if col not in core_columns:
-                    # For backwards compatibility: if toxic_comments exists but context_text doesn't, add both
-                    if col == 'toxic_comments' and 'context_text' not in df.columns:
-                        additional_context['context_text'] = row[col]
-                    additional_context[col] = row[col]
+            # Use helper method to process custom columns with backwards compatibility
+            additional_context = self._process_custom_columns(row, df.columns, core_columns)
             
             user = User(
                 user_name=row['author'],
@@ -924,7 +934,13 @@ class Run:
     def get_context_text(self, user_id):
         """Get the context text for a user from additional_context. 
         For backwards compatibility, also checks for 'toxic_comments' field.
-        Returns empty string if neither field exists."""
+        
+        Returns:
+            Empty string if neither field exists
+            
+        Raises:
+            Exception: If user_id is not found in participants
+        """
         try:
             user = self.participants[user_id]
             return user.additional_context.get('context_text', user.additional_context.get('toxic_comments', ''))
