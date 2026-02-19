@@ -102,11 +102,11 @@ The project uses several CSV files to manage participants and conversations:
 
 - **participants.csv** - Contains participant information with required columns: `author`, `author_id`, `condition`, `subreddit`, `messaging_strategy`, `gai_platform`, `gai_model`, `first_consented_msg`, `initial_message`.
   
-  **All Other Columns Are Custom**: Any additional columns you add (including optional `context_text` or legacy `toxic_comments`) will be stored in the `User.additional_context` dictionary and can be accessed in message templates. There are no hardcoded or special-case fields beyond the core required columns.
+  **All Other Columns Are Custom**: Any additional columns you add will be stored in the `User.additional_context` dictionary and can be accessed in message templates. There are no hardcoded or special-case fields beyond the core required columns.
 
 - **to_contact.csv** - List of prospective participants to contact, with required columns: `author`, `subreddit`.
   
-  **All Other Columns Are Custom**: Any additional columns you add (including optional `context_text`, `toxic_comments`, `timestamp`, `moderator`, `tox_score`, etc.) will be automatically captured and stored in `User.additional_context`, allowing you to track any metadata about prospective participants (e.g., `post_karma`, `account_age`, `sentiment_score`, `topic_category`, etc.).
+  **All Other Columns Are Custom**: Any additional columns you add will be automatically captured and stored in `User.additional_context`, allowing you to track any metadata about prospective participants (e.g., `post_karma`, `account_age`, `sentiment_score`, `topic_category`, `context_text`, etc.).
 
 - **conversations.csv** - Record of all conversation messages exchanged with participants.
 
@@ -122,8 +122,6 @@ first_consented_message:
 ```
 
 If your `to_contact.csv` includes columns like `topic`, `post_karma`, and `account_age`, these will automatically be available for use in any message template (`initial_message`, `first_consented_message`, etc.).
-
-**Backwards Compatibility Note**: For studies using `context_text` or `toxic_comments` fields, the legacy field name `toxic_comments` is automatically mapped to `context_text` for use in templates. You can reference either `{context_text}` or `{comment}` in your templates if these fields exist in your CSV.
 
 ## Scheduling / Automation
 

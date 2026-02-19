@@ -265,7 +265,7 @@ class Run:
             self.bad_accounts = []
     
     def _process_custom_columns(self, row, df_columns, core_columns):
-        """Helper method to process custom columns with backwards compatibility for toxic_comments.
+        """Helper method to process custom columns.
         
         Args:
             row: DataFrame row containing the data
@@ -279,10 +279,6 @@ class Run:
         for col in df_columns:
             if col not in core_columns:
                 additional_context[col] = row[col]
-        
-        # For backwards compatibility: if toxic_comments exists but context_text doesn't, also add as context_text
-        if 'toxic_comments' in additional_context and 'context_text' not in df_columns:
-            additional_context['context_text'] = additional_context['toxic_comments']
         
         return additional_context
 
@@ -886,8 +882,8 @@ class Run:
     def send_first_consented_message(self, user, conversation):
         '''Sends a message to the user if they have consented to the study.
         
-        The message template can use {subreddit}, {comment} (or {context_text}), and any fields 
-        from user.additional_context by using {fieldname} in the template.
+        The message template can use {subreddit} and any fields from user.additional_context 
+        by using {fieldname} in the template.
         '''
         # If the user is in the default flow, then we send a DM. Otherwise, we send a reply to the user.
         first_consented_message = config['first_consented_message'][user.first_consented_msg]
@@ -897,12 +893,9 @@ class Run:
             'subreddit': user.subreddit
         }
         
-        # Add all additional context fields for template formatting (including optional context_text)
+        # Add all additional context fields for template formatting
         if user.additional_context:
             format_context.update(user.additional_context)
-            # For backwards compatibility, set 'comment' to 'context_text' if it exists
-            if 'context_text' in user.additional_context:
-                format_context['comment'] = user.additional_context['context_text']
         
         message = first_consented_message.format(**format_context)
         if user.messaging_strategy == 'default':
@@ -930,22 +923,6 @@ class Run:
         except KeyError:
             raise Exception(f"Tried to find {user_id} in the participants file, but it wasn't there")
 
-
-    def get_context_text(self, user_id):
-        """Get the context text for a user from additional_context. 
-        For backwards compatibility, also checks for 'toxic_comments' field.
-        
-        Returns:
-            Empty string if neither field exists
-            
-        Raises:
-            Exception: If user_id is not found in participants
-        """
-        try:
-            user = self.participants[user_id]
-            return user.additional_context.get('context_text', user.additional_context.get('toxic_comments', ''))
-        except KeyError:
-            raise Exception(f"Tried to find {user_id} in the participants file, but it wasn't there")
 
     def get_ai_reply(self, conversation, bot_instructions, gai_platform, gai_model):
         ## Check for maximum interactions
