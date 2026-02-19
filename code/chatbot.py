@@ -232,7 +232,6 @@ class Run:
         self.load_participants()
         self.load_bad_accounts()
         self.load_conversations()
-        self.load_subreddits()
         self.initial_message_types = list(config['initial_message'].keys())
         self.prompt_options = list(config['gai_prompt'].keys())
         self.clarifying_message = config['clarifying_message']
@@ -252,32 +251,12 @@ class Run:
         # TODO: Determine if we need different messages for different conditions or subreddits
         return config['initial_message'][user.initial_message].format(username=user.user_name, subreddit=user.subreddit)
     
-    def get_subred_rules(self, subred):
-        rules = list()
-        for rule in self.reddit.subreddit(subred).rules:
-            rules.append(rule)
-        rules = ', '.join(map(str, rules))
-        logging.info(f"Rules for {subred} are: {rules}")
-        new_sub = pd.DataFrame({'subreddit': [subred], 'rules': [rules]})
-        self.subreddits = pd.concat([self.subreddits, new_sub], ignore_index=True)
-        self.subreddits.to_csv(self.subreddits_file, index=False)
-        
-        return rules
               
     def get_condition_prompt(self, user):
-        subreddit_rules = self.subreddits.loc[self.subreddits.subreddit == user.subreddit, 'rules']
-        if len(subreddit_rules) == 0:
-            try:
-                subreddit_rules = self.get_subred_rules(user.subreddit)
-            except Exception as e:
-                logging.error(e)
-                logging.error("Error getting sub rules")
-                subreddit_rules = ''
-
         gai_prompt = config['gai_prompt'] 
         try:
             prompt = gai_prompt[user.condition]
-            prompt = prompt.format(user=user, subreddit_rules = subreddit_rules)
+            prompt = prompt.format(user=user)
             return prompt
         except KeyError:
             raise KeyError(f"Condition must be one of {self.prompt_options}")
@@ -346,14 +325,6 @@ class Run:
             self.username_to_id_map[row['author']] = author_id
         
 
-    def load_subreddits(self):
-        '''Loads the table of subreddit info (subreddit rules). Should have the following columns:
-        subreddit (str), rules (str)'''
-
-        try:
-            self.subreddits = pd.read_csv(self.subreddits_file)
-        except FileNotFoundError:
-            self.subreddits = pd.DataFrame()
 
     def get_messages(self):
         '''Gets the unread messages in our inbox, filters out those that aren't part of conversations with participants,
@@ -813,7 +784,7 @@ class Run:
             messages.append({"role": role, "content": message.text})
         
         # Get max tokens from config (use default if not specified for this model)
-        max_tokens = config['max_tokens'].get(gai_model, gai_interface.DEFAULT_MAX_TOKENS)
+        max_tokens = config.get('max_tokens', gai_interface.DEFAULT_MAX_TOKENS)
         
         # Call the gai_interface module
         return gai_interface.get_ai_reply(
