@@ -2,45 +2,24 @@
 
 Authors: Dr. Jeremy Foote ([jdfoote@purdue.edu](mailto:jdfoote@purdue.edu)), Dr. Deepak Kumar ([kumarde@ucsd.edu](mailto:kumarde@ucsd.edu)), Hitesh Goel ([hitesh.goel@research.iiit.ac.in](mailto:hitesh.goel@research.iiit.ac.in)), Loizos Bitsikokos ([lbitsiko@purdue.edu](mailto:lbitsiko@purdue.edu))
 
-Reddit Conversation Laboratory is a software toolkit and pipeline for conducting field experiments with AI agents on Reddit. It is Python-based software that identifies participants, recruits and consents them, and conducts conversational experiments with researcher-designed AI chatbots. 
+Reddit Conversation Laboratory (RCL) is a software toolkit and pipeline for conducting field experiments with AI agents on Reddit. It is Python-based software that identifies participants, recruits and consents them, and conducts conversational experiments with researcher-designed AI chatbots. 
 
-In addition to conducting experiments and storing conversations, the software can also record participant behavior before and after conversations. The toolkit contains scripts to fetch Reddit comments, prepare conversation-level data, augment comments with moderation and suspension signals, and generate summarized outputs for downstream analysis.
+In addition to conducting experiments and storing conversations, the software can also record participant behavior before and after conversations. The toolkit contains scripts to fetch Reddit comments, prepare conversation-level data, augment comments with moderation and suspension signals, and generate summarized outputs for downstream analysis. In addition to this documentation, there is [an academic paper](https://doi.org/10.5117/CCR2026.2.5.FOOT) which provides a more extended expalanation and argument for when, why, and how researchers might use RCL.
 
-## Universal Design
 
-The project is designed to be adaptable for various research studies on Reddit:
+## Installation
 
-- **Context-agnostic participant data**: Participant information is stored with a generic `context_text` field that can hold any relevant content (comment text, post content, user activity, etc.) rather than being tied to a specific study type.
-- **Configurable participant identification**: The default implementation in `get_prospective_users.py` identifies participants from moderation logs and toxicity scores, but this can be customized for other criteria (e.g., keyword matching, post topics, user activity patterns).
-- **Flexible messaging and prompts**: All chatbot messages and AI prompts are configurable via YAML files, allowing you to adapt the system for different research questions and intervention strategies.
+### Requirements
 
-*Note: Some auxiliary scripts still contain toxicity-specific logic (e.g., Perspective API scoring). These can serve as examples for implementing your own participant identification criteria.*
+RCL is designed to be run on a Linux server, using the `cron` scheduling system. It requires at least 2 cores and at least 4GB of RAM. Working with really large samples may require additional resources.
 
-## Quick overview
-- Chatbot and conversation software: [code/chatbot.py](code/chatbot.py) contains code to set-up and run the chatbot.
-- Fetching / collection: [code/fetch_comms/](code/fetch_comms/) and [code/get_convos.py](code/get_convos.py).
-- Augmentation: [code/augment_data/](code/augment_data/) contains scripts that add moderation, suspension, and other columns.
-- Summarization: [code/summarize_data/](code/summarize_data/) contains scripts to summarize conversation data and clean participant information
-- Utilities: other scripts for preparing datasets and moderation extraction live in the top-level [code/](code/) folder.
-
-## Repository structure
-
-Top-level:
-
-- [environment.yml](environment.yml) - Conda environment specifications
-- [Snakefile](Snakefile) - Snakemake pipeline that puts together augmentation and cleaning rules
-- [crontab.example](crontab.example) - Example crontab file for scheduling automated script execution
-- [code/](code/) - Python scripts
-- [data/](data/) - Expected output and input data folders
-
-## Prerequisites
-
-- Conda / Miniforge / Anaconda installed. The repo includes [environment.yml](environment.yml) to create the environment used by the [Snakefile](Snakefile) rules.
-- Snakemake installed.
+Required software:
+- Python 3.10+
+- Conda / Miniconda
 
 ## Setup (create environment)
 
-Create the conda environment from the provided specs:
+Clone this repository, and create the conda environment using the `environment.yml` file.
 
 ```bash
 conda env create -f environment.yml
@@ -51,7 +30,10 @@ The default name for the environment is `rcl`. To change this, edit the first li
 
 ## Running experiments and collecting data
 
-In order to run chatbot experiments, you will need to set up Reddit API credentials and an OpenAI API key. On Reddit, this means setting up a Reddit app to get a client ID and secret. See the [PRAW documentation](https://praw.readthedocs.io/en/stable/getting_started/authentication.html) for details.
+In order to run chatbot experiments, you will need to set up Reddit API credentials and an API key to one or more LLM providers (currently, the system supports OpenAI and Anthropic). On Reddit, this means setting up a Reddit app to get a client ID and secret. See the [PRAW documentation](https://praw.readthedocs.io/en/stable/getting_started/authentication.html) for details.
+
+It is also recommended that you work with moderators of the subreddits that you are recruiting from. In the default implementation, the chatbot sends modmail messages to prospective participants, so you will need to have moderator permissions for the subreddits you are recruiting from. You can modify the included `invite_mods.py` script to send invitations to moderators to participate in the study, and to keep track of which subreddits have been contacted.
+
 
 ### Environment variables (.env)
 
@@ -63,52 +45,29 @@ cp .env.example .env
 
 The `.env` file is ignored by git to avoid accidentally committing your keys.
 
-### Configuring the chatbot
+## Chatbot flow
 
+The chatbot is designed to work as follows, from the user's perspective:
 
+1. Via modmail, the bot sends an initial message to a prospective participant (e.g., "Hi, I noticed your comment in r/subreddit. Would you be interested in chatting with an AI about your experience?").
+2. If the user replies with a response starting with "Yes", the bot assigns them to a condition or to control and sends a handoff message (e.g., "Thanks so much! If you are selected for the study, you will receive a direct message from this account soon.")
+2a. If the user replies with something other than "Yes", the bot sends a clarifying message (e.g., "Sorry, I just want to confirm that you are interested in chatting with an AI about your experience. If so, please reply with 'Yes'.")
+3. For users who consent and are not in control, the bot sends another hardcoded message (`first_consented_message`), which should be designed to elicit a response. After this, the chatbot passes the conversation and its history to the LLM, which uses the `gai_prompt` templates to generate responses. The bot continues to reply until the conversation ends (e.g., user stops replying, or a certain number of messages is reached), at which point it sends a goodbye message.
 
-## Running the pipeline (Snakemake)
-
-From the repository root you can run a dry-run to see the planned actions:
-
-```bash
-# show what Snakemake would run (no commands executed)
-snakemake -n
-```
-
-To actually run the default pipeline (the `rule all` targets in the `Snakefile`):
-
-```bash
-# run the pipeline using up to 4 cores (adjust -j as needed)
-snakemake -j 4
-```
 
 ## Configuration
 
-The repository uses a small set of YAML configuration files (located in `code/`) to control messaging text, file paths, and model settings. The two primary files are:
+The heart of the RCL system is the chatbot, which is designed to be flexible and adaptable for different research questions. To configure the chatbot, RCL uses a YAML configuration file that defines the chatbot's behavior, settings, and message templates. This allows you to customize the chatbot for different studies. For many options, researchers can provide a dictionary of multiple values which will be randomly assigned to participants (e.g., different LLM models, different initial messages, etc.), enabling easy experimentation with different conditions. The file itself (`code/config.yaml`) is well-commented to explain the purpose of each option and how to use it, but here is a quick overview of the key configuration options:
 
-- [code/config.yaml](code/config.yaml) - active configuration read by several scripts (`chatbot.py`, `get_convos.py`, `get_toxic_moderated_comments.py`). Key entries:
-    - `openai_models` - list of OpenAI model names the chatbot can use.
-    - `max_interactions` and `max_tokens` - limits used when building prompts and calling OpenAI.
-    - `conversations_file`, `to_contact_file`, `participants_file`, `subreddits_file`, `bad_accounts_file` - relative paths to project CSVs.
-    - `initial_message`, `clarifying_message`, `handoff_message`, `first_consented_message`, `gai_prompt` - message templates and system prompts used by the chatbot. These are multiline strings and may include formatting placeholders like `{subreddit}` and `{comment}`.
-    - `goodbye_message` - final message shown when the bot stops replying.
-
-- [code/example_config.yaml](code/example_config.yaml) - a trimmed example of the same keys with shortened messages. Use this as a starting point for custom configs.
-
-### Data Files and CSV Structure
-
-The project uses several CSV files to manage participants and conversations:
-
-- **participants.csv** - Contains participant information with required columns: `author`, `author_id`, `condition`, `subreddit`, `messaging_strategy`, `gai_platform`, `gai_model`, `first_consented_msg`, `initial_message`.
-  
-  **All Other Columns Are Custom**: Any additional columns you add will be stored in the `User.additional_context` dictionary and can be accessed in message templates. There are no hardcoded or special-case fields beyond the core required columns.
-
-- **to_contact.csv** - List of prospective participants to contact, with required columns: `author`, `subreddit`.
-  
-  **All Other Columns Are Custom**: Any additional columns you add will be automatically captured and stored in `User.additional_context`, allowing you to track any metadata about prospective participants (e.g., `post_karma`, `account_age`, `sentiment_score`, `topic_category`, `context_text`, etc.).
-
-- **conversations.csv** - Record of all conversation messages exchanged with participants.
+  - `gai_models` - list of LLM models the chatbot can use (currently supports OpenAI and Anthropic models, but can be extended to other providers).
+  - `conversations_file`, `to_contact_file`, `participants_file`, `subreddits_file`, `bad_accounts_file` - relative paths to project CSVs. Defaults are set to the `data/` folder, but you can change these if you want to organize your files differently.
+  - `initial_message` - a list of recruitment messages to send to prospective participants. If you provide multiple messages, the chatbot will randomly select one for each participant.
+  - `clarifying_message` - message sent when a user replies with something other than "Yes" or "No" to the initial recruitment message, asking them to clarify their interest.
+  - `handoff_message` - message sent when a user consents and is assigned to a condition.
+  - `first_consented_message` - message sent to users who have consented and are not in the control group.
+  - `gai_prompt` - dictionary of system prompts used by the chatbot. These are multiline strings and may include formatting placeholders like `{subreddit}` and `{comment}`, which will be filled in with data from the participant CSV.
+  - `goodbye_message` - final message shown when the bot reaches its maximum number of messages.
+  - `subreddits` - subreddits for which the chatbot is a moderator. The `to_contact` file must include a `subreddit` column, and the chatbot will message users using modmail from these subreddits.
 
 #### Using Custom Fields in Message Templates
 
@@ -121,7 +80,9 @@ first_consented_message:
     Your account karma is {post_karma} and you've been active for {account_age} days.
 ```
 
-If your `to_contact.csv` includes columns like `topic`, `post_karma`, and `account_age`, these will automatically be available for use in any message template (`initial_message`, `first_consented_message`, etc.).
+## Recruiting Participants
+
+The default implementation of RCL identifies prospective participants by scanning subreddit moderation logs for removed comments, and then scores those comments for toxicity using the Perspective API. The `get_prospective_users.py` script is responsible for this, and it writes a `to_contact.csv` file with the list of users to contact, along with relevant metadata (e.g., the comment that got them identified, the toxicity score, etc.). You can modify this script to use different criteria for identifying participants if you want to study a different population. For example, you might look for the most recently active users in a subreddit, or users who have posted about a certain topic, etc. The important thing is that the output of this script should be a `to_contact.csv` file with a `username` column and a `subreddit` column, which the chatbot will use to send recruitment messages.
 
 ## Scheduling / Automation
 
@@ -150,7 +111,7 @@ To use the example crontab:
 
 See [crontab.example](crontab.example) for detailed instructions and alternative configurations.
 
-## Code files (brief descriptions)
+## Code files (brief descriptions generated by Copilot)
 
 Top-level scripts in `code/`:
 

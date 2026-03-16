@@ -1,41 +1,27 @@
 import praw
-import invite_config
 import random
 import logging
 from prawcore.exceptions import Forbidden
 from prawcore.exceptions import NotFound
 from praw.exceptions import RedditAPIException
+import auth
 
 
 max_size = 8000000000
 min_size = 1000
 n_sr_to_contact = 3
+TO_CONTACT_FILE = 'data/subreddits_to_contact.csv'
+CONTACTED_FILE = 'data/contacted_subreddits.csv'
 
 #logging.basicConfig(level=logging.DEBUG)
 
 def contact_sr(sr, conn):
-    subject = 'Toxic comment intervention study'
+    subject = 'Chatbot intervention study'
     msg = f'''Hello r/{sr} moderators,
-
-My name is Jeremy Foote—I am a Communication professor at Purdue University in the USA. I am part of a research team that is working to design interventions to help with toxic content on Reddit. Based on communication theories, we are developing a set of chatbots intended to help those who post toxic content to change their behavior.
-
-The bot is currently active on a few subreddits, and the initial results have been promising.
-
-We are wondering if your moderation team would be willing to consider participating in our study? We are hopeful that our interventions will help communities to be safer and will help users learn to engage more prosocially.
-
-If you choose to participate, what would that mean?
-
-Subreddits who choose to participate would make our bot a mod on your subreddit, with the modmail permission. The bot would look through the modlogs to identify extremely toxic comments which have been removed. The bot would then use modmail to send a message to a random set of users who posted these toxic comments, inviting them to begin a conversation via DM. The bot would identify itself as a bot, and would offer to talk with the user about their behavior. There are a few different conditions, such as a bot that focuses on using stories to try to persuade users. All of the bots are instructed to be patient and non-confrontational.
-
-We will use both modlogs and public comments to look at whether the users who are contacted by our bot reduce toxic behavior more than the users that are not contacted. We will also analyze the content of the conversations that users have with our bots.
-
-A webpage describing the project (and which is shared in our initial message with users) is at https://wiki.communitydata.science/Chatbot_study_consent.
-
-Would you be willing to consider participating in our research? If you're open to discussing it, please either respond to me on Reddit or via email at jdfoote@purdue.edu.
-
-Thanks so much for your time.
-
-Jeremy'''
+    
+    YOUR RECRUITMENT MESSAGE HERE. 
+    
+    '''
     try:
         conn.subreddit(sr).message(subject=subject, message=msg)
     except (NotFound, RedditAPIException) as e:
@@ -45,21 +31,21 @@ Jeremy'''
 
 def main():
     reddit = praw.Reddit(
-        client_id=invite_config.client_id,
-        client_secret=invite_config.client_secret,
-        user_agent=invite_config.u_agent,
-        username=invite_config.username,
-        password=invite_config.password
+        client_id=auth.client_id,
+        client_secret=auth.client_secret,
+        user_agent=auth.u_agent,
+        username=auth.username,
+        password=auth.password
     )
 
     candidates = []
-    with open(invite_config.sr_to_contact_file, 'r') as f:
+    with open(TO_CONTACT_FILE, 'r') as f:
         for line in f.readlines():
             candidates.append(line.strip())
     n_candidates = len(set(candidates))
 
     contacted = []
-    with open(invite_config.contacted_file, 'r') as f:
+    with open(CONTACTED_FILE, 'r') as f:
         for line in f.readlines():
             contacted.append(line.strip())
 
@@ -98,7 +84,7 @@ def main():
     for sr in to_contact:
         logging.debug(f'Contacting subreddit {sr}')
         contact_sr(sr, conn=reddit)
-        with open(invite_config.contacted_file, 'a') as f:
+        with open(CONTACTED_FILE, 'a') as f:
             f.write(f"{sr}\n")
 
 
